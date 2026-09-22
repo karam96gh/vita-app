@@ -36,6 +36,21 @@ class PatientRepository {
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
 
+  /// Every assignment across all sessions, oldest session first.
+  Future<List<AssignedExercise>> program() async {
+    final data = await api.get('/me/exercises');
+    if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
+    return data
+        .map((item) => AssignedExercise.fromJson(item, contract))
+        .toList()
+      ..sort((a, b) {
+        final bySession = (a.sessionNumber ?? 0).compareTo(
+          b.sessionNumber ?? 0,
+        );
+        return bySession != 0 ? bySession : a.sortOrder.compareTo(b.sortOrder);
+      });
+  }
+
   Future<List<SkipReason>> skipReasons() async {
     final data = await api.get('/me/skip-reasons');
     return contract

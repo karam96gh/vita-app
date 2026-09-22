@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/localization/app_strings.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
@@ -48,6 +49,14 @@ class ProgressScreen extends ConsumerWidget {
                 ),
               ),
             ),
+          const SizedBox(height: 8),
+          AppNavTile(
+            icon: Icons.event_note_rounded,
+            color: AppColors.info,
+            title: context.t('sessionHistory'),
+            subtitle: context.t('sessionHistoryHint'),
+            onTap: () => context.push('/sessions'),
+          ),
         ],
       ),
     ),

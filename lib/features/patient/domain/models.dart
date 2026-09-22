@@ -124,6 +124,11 @@ class AssignedExercise {
     this.executed = false,
     this.executionStatus,
     this.finishedAt,
+    this.startedAt,
+    this.elapsedSeconds,
+    this.skipReasonId,
+    this.sessionId,
+    this.sessionNumber,
   });
   factory AssignedExercise.fromJson(Object? value, PatientContract contract) {
     final data = _object(value);
@@ -143,10 +148,26 @@ class AssignedExercise {
     if (execution != null && execution is! Map<String, dynamic>) {
       throw const ApiFailure('INVALID_RESPONSE');
     }
-    final finished = execution == null
-        ? null
-        : _nullableText(execution, 'completedAt') ??
-              _nullableText(execution, 'skippedAt');
+    // Observed execution: startedAt, completedAt, elapsedSeconds, status,
+    // skipReasonId, skipReasonText, completionNote (plus ids/audit stamps).
+    DateTime? stamp(String key) {
+      final value = execution == null ? null : _nullableText(execution, key);
+      return value == null ? null : _date(value);
+    }
+
+    final elapsed = execution?['elapsedSeconds'];
+    if (elapsed != null && (elapsed is! int || elapsed < 0)) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    // Only the all-exercises endpoint embeds the owning session.
+    final session = data['session'];
+    if (session != null && session is! Map<String, dynamic>) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    final sessionNumber = session?['sessionNumber'];
+    if (sessionNumber != null && sessionNumber is! int) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
     return AssignedExercise._(
       id: _text(data, 'id'),
       name: _text(exercise, 'nameAr'),
@@ -179,9 +200,18 @@ class AssignedExercise {
       executionStatus: execution == null
           ? null
           : _nullableText(execution, 'status'),
-      finishedAt: finished == null ? null : _date(finished),
+      finishedAt: stamp('completedAt'),
+      startedAt: stamp('startedAt'),
+      elapsedSeconds: elapsed as int?,
+      skipReasonId: execution == null
+          ? null
+          : _nullableText(execution, 'skipReasonId'),
+      sessionId: _nullableText(data, 'erpSessionId'),
+      sessionNumber: sessionNumber as int?,
     );
   }
+  final String? sessionId;
+  final int? sessionNumber;
   final String? nameEn,
       instructionsEn,
       description,
@@ -213,13 +243,14 @@ class AssignedExercise {
   final bool? canStart, canComplete, canSkip;
   final bool executed;
   final String? executionStatus;
-  final DateTime? finishedAt;
+  final DateTime? finishedAt, startedAt;
+  final int? elapsedSeconds;
+  final String? skipReasonId;
   bool get cancelled => status == 'CANCELLED';
+  // Only COMPLETED is observed so far; a recorded skip reason is authoritative.
+  bool get skipped => executionStatus == 'SKIPPED' || skipReasonId != null;
   bool get done =>
-      finishedAt != null ||
-      executionStatus == 'COMPLETED' ||
-      executionStatus == 'SKIPPED';
-  bool get skipped => executionStatus == 'SKIPPED';
+      finishedAt != null || executionStatus == 'COMPLETED' || skipped;
   bool get inProgress => executed && !done;
 
   // Backend confirmed only CANCELLED blocks actions; the rest follows the

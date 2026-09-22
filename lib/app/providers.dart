@@ -106,6 +106,19 @@ final exercisesProvider = FutureProvider.autoDispose
     .family<List<AssignedExercise>, String>(
       (ref, session) => ref.watch(repositoryProvider).exercises(session),
     );
+final programProvider = FutureProvider.autoDispose<List<AssignedExercise>>(
+  (ref) => ref.watch(repositoryProvider).program(),
+);
+
+/// Latest therapist-authored message for the Today preview; null when none.
+final therapistMessageProvider = FutureProvider.autoDispose<ChatMessage?>((
+  ref,
+) async {
+  final conversation = await ref.watch(repositoryProvider).conversation();
+  final received = conversation.messages.where((message) => !message.mine);
+  if (received.isEmpty) return null;
+  return received.reduce((a, b) => a.at.isAfter(b.at) ? a : b);
+});
 final skipReasonsProvider = FutureProvider.autoDispose<List<SkipReason>>(
   (ref) => ref.watch(repositoryProvider).skipReasons(),
 );

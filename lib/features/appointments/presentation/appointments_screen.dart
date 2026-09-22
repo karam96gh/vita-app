@@ -27,6 +27,7 @@ class AppointmentsScreen extends ConsumerWidget {
               icon: Icons.calendar_month_outlined,
             )
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final (index, item) in items.indexed)
                   Padding(

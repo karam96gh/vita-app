@@ -292,6 +292,39 @@ class _AppEntranceState extends State<AppEntrance>
   );
 }
 
+class AppNavTile extends StatelessWidget {
+  const AppNavTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.color = AppColors.primary,
+  });
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(20),
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: .12),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+      onTap: onTap,
+    ),
+  );
+}
+
 class AppLoading extends StatelessWidget {
   const AppLoading({super.key});
   @override

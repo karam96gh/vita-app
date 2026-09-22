@@ -11,7 +11,10 @@ import '../features/exercises/presentation/exercise_player_screen.dart';
 import '../features/exercises/presentation/exercises_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
+import '../features/patient/domain/models.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/program/presentation/exercise_detail_screen.dart';
+import '../features/program/presentation/program_screen.dart';
 import '../features/progress/presentation/progress_screen.dart';
 import '../features/rating/presentation/rating_screen.dart';
 import '../features/sessions/presentation/sessions_screen.dart';
@@ -93,14 +96,14 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
               const _MainNavigation(index: 0, child: HomeScreen()),
         ),
         GoRoute(
-          path: '/appointments',
+          path: '/program',
           builder: (_, _) =>
-              const _MainNavigation(index: 1, child: AppointmentsScreen()),
+              const _MainNavigation(index: 1, child: ProgramScreen()),
         ),
         GoRoute(
-          path: '/sessions',
+          path: '/progress',
           builder: (_, _) =>
-              const _MainNavigation(index: 2, child: SessionsScreen()),
+              const _MainNavigation(index: 2, child: ProgressScreen()),
         ),
         GoRoute(
           path: '/chat',
@@ -108,11 +111,27 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
               const _MainNavigation(index: 3, child: ChatScreen()),
         ),
         GoRoute(
-          path: '/profile',
-          builder: (_, _) =>
-              const _MainNavigation(index: 4, child: ProfileScreen()),
+          path: '/program/:id',
+          builder: (_, state) => ExerciseDetailScreen(
+            id: state.pathParameters['id']!,
+            initial: state.extra is AssignedExercise
+                ? state.extra! as AssignedExercise
+                : null,
+          ),
         ),
-        GoRoute(path: '/progress', builder: (_, _) => const ProgressScreen()),
+        GoRoute(
+          path: '/play',
+          builder: (_, state) => ExercisePlayerScreen(
+            startId: state.uri.queryParameters['start'],
+            sessionId: state.uri.queryParameters['session'],
+          ),
+        ),
+        GoRoute(
+          path: '/appointments',
+          builder: (_, _) => const AppointmentsScreen(),
+        ),
+        GoRoute(path: '/sessions', builder: (_, _) => const SessionsScreen()),
+        GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
         GoRoute(
           path: '/notifications',
           builder: (_, _) =>
@@ -122,11 +141,6 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
           path: '/sessions/:id/exercises',
           builder: (_, state) =>
               ExercisesScreen(sessionId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/sessions/:id/play',
-          builder: (_, state) =>
-              ExercisePlayerScreen(sessionId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/sessions/:id/rating',
@@ -230,21 +244,29 @@ class _MainNavigation extends StatelessWidget {
   final int index;
   final Widget child;
   static const _tabs = [
-    ('home', Icons.home_outlined),
-    ('appointments', Icons.calendar_month_outlined),
-    ('sessions', Icons.accessibility_new_rounded),
-    ('chat', Icons.forum_outlined),
-    ('profile', Icons.person_outline),
+    ('/home', 'today', Icons.today_outlined, Icons.today_rounded),
+    (
+      '/program',
+      'program',
+      Icons.self_improvement_outlined,
+      Icons.self_improvement_rounded,
+    ),
+    ('/progress', 'progress', Icons.insights_outlined, Icons.insights_rounded),
+    ('/chat', 'messages', Icons.forum_outlined, Icons.forum_rounded),
   ];
   @override
   Widget build(BuildContext context) => Scaffold(
     body: child,
     bottomNavigationBar: NavigationBar(
       selectedIndex: index,
-      onDestinationSelected: (value) => context.go('/${_tabs[value].$1}'),
+      onDestinationSelected: (value) => context.go(_tabs[value].$1),
       destinations: [
         for (final tab in _tabs)
-          NavigationDestination(icon: Icon(tab.$2), label: context.t(tab.$1)),
+          NavigationDestination(
+            icon: Icon(tab.$3),
+            selectedIcon: Icon(tab.$4),
+            label: context.t(tab.$2),
+          ),
       ],
     ),
   );
