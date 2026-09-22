@@ -115,15 +115,17 @@ void main() {
     expect(started.inProgress, isTrue);
     expect(actions(started), [false, true, true]);
 
+    // A finished execution does not lock the exercise: start/skip open a new
+    // execution (confirmed backend behaviour), so it can be repeated.
     final completed = parse({
       'status': 'COMPLETED',
       'completedAt': '2026-09-20T10:00:00.000Z',
     });
     expect(completed.done, isTrue);
     expect(completed.finishedAt, DateTime.utc(2026, 9, 20, 10));
-    expect(actions(completed), [false, false, false]);
+    expect(actions(completed), [true, false, true]);
 
-    expect(actions(parse({'status': 'SKIPPED'})), [false, false, false]);
+    expect(actions(parse({'status': 'SKIPPED'})), [true, false, true]);
     expect(
       () => parse('COMPLETED'),
       throwsA(

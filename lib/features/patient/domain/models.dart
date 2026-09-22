@@ -1,3 +1,4 @@
+import 'dart:math' show max;
 import '../../../core/errors/api_failure.dart';
 import '../../../core/network/patient_contract.dart';
 
@@ -130,6 +131,10 @@ class AssignedExercise {
     this.completionNote,
     this.sessionId,
     this.sessionNumber,
+    this.timesPerDay,
+    this.daysPerWeek,
+    this.todayCompletedCount,
+    this.lastActivityAt,
   });
   factory AssignedExercise.fromJson(Object? value, PatientContract contract) {
     final data = _object(value);
@@ -212,8 +217,40 @@ class AssignedExercise {
           : _nullableText(execution, 'completionNote'),
       sessionId: _nullableText(data, 'erpSessionId'),
       sessionNumber: sessionNumber as int?,
+      timesPerDay: count('timesPerDay'),
+      daysPerWeek: count('daysPerWeek'),
+      // Only /me/exercises carries it (computed in the clinic's timezone).
+      todayCompletedCount: count('todayCompletedCount'),
+      lastActivityAt: stamp('updatedAt') ?? stamp('completedAt'),
     );
   }
+
+  /// Prescribed repetitions per day; null means "not specified" (text only).
+  final int? timesPerDay, daysPerWeek;
+  final int? todayCompletedCount;
+  final DateTime? lastActivityAt;
+
+  int get dailyTarget => max(timesPerDay ?? 1, 1);
+
+  /// Server count when present; otherwise inferred from the latest execution.
+  int completedToday(DateTime now) =>
+      todayCompletedCount ??
+      (finishedAt != null && !skipped && _sameDay(finishedAt!, now) ? 1 : 0);
+
+  bool doneToday(DateTime now) => completedToday(now) >= dailyTarget;
+  bool skippedToday(DateTime now) =>
+      skipped && lastActivityAt != null && _sameDay(lastActivityAt!, now);
+
+  /// Nothing left to do for this exercise today.
+  bool handledToday(DateTime now) => doneToday(now) || skippedToday(now);
+
+  static bool _sameDay(DateTime utc, DateTime now) {
+    final local = utc.toLocal();
+    return local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+  }
+
   final String? sessionId;
   final int? sessionNumber;
   final String? nameEn,
@@ -257,9 +294,9 @@ class AssignedExercise {
       finishedAt != null || executionStatus == 'COMPLETED' || skipped;
   bool get inProgress => executed && !done;
 
-  // Backend confirmed only CANCELLED blocks actions; the rest follows the
-  // natural not-started -> in-progress -> finished flow, and the server still
-  // rejects any invalid transition with INVALID_ACTION.
+  // Backend confirmed: only CANCELLED blocks actions, and start/skip after a
+  // finished execution open a new one, so exercises repeat without limit.
+  // An in-progress execution must be completed (or skipped) first.
   bool allows(String action) {
     if (cancelled) return false;
     final explicit = switch (action) {
@@ -270,9 +307,9 @@ class AssignedExercise {
     };
     if (explicit != null) return explicit;
     return switch (action) {
-      'start' => !executed,
+      'start' => !inProgress,
       'complete' => inProgress,
-      'skip' => !done,
+      'skip' => true,
       _ => false,
     };
   }
@@ -286,9 +323,8 @@ class SkipReason {
   String localizedLabel(String language) =>
       language == 'en' && labelEn?.trim().isNotEmpty == true ? labelEn! : label;
 
-  /// Observed: a plain list of {id, nameAr, nameEn, sortOrder, active}. The
-  /// response has no "Other" marker; the server enforces free text itself
-  /// (SKIP_REASON_TEXT_REQUIRED), so it is only set from a mapped contract.
+  /// A plain list of {id, nameAr, nameEn, sortOrder, active, requiresText};
+  /// requiresText is true only for "Other".
   static List<SkipReason> listFrom(Object? data, PatientContract contract) {
     if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
     final reasons = <(int, SkipReason)>[];
@@ -306,7 +342,7 @@ class SkipReason {
           _text(json, 'nameAr'),
           contract.paths.containsKey('skipReason.isOther')
               ? contract.flag(json, 'skipReason.isOther')
-              : false,
+              : _optionalFlag(json, 'requiresText'),
           labelEn: _nullableText(json, 'nameEn'),
         ),
       ));
@@ -341,6 +377,33 @@ class ProgressSummary {
       count('skipped'),
       count('inProgress'),
     );
+  }
+}
+
+/// One day of completions from /me/progress/daily (clinic calendar date).
+class DailyCompletion {
+  const DailyCompletion(this.date, this.completed);
+  final DateTime date;
+  final int completed;
+
+  /// [{date: "2026-09-22", completed: 5}], oldest first, empty days = 0.
+  static List<DailyCompletion> listFrom(Object? data) {
+    if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
+    return [
+      for (final item in data)
+        () {
+          final json = _object(item);
+          final date = DateTime.tryParse(_text(json, 'date'));
+          final completed = json['completed'];
+          if (date == null || completed is! int || completed < 0) {
+            throw const ApiFailure('INVALID_RESPONSE');
+          }
+          return DailyCompletion(
+            DateTime(date.year, date.month, date.day),
+            completed,
+          );
+        }(),
+    ]..sort((a, b) => a.date.compareTo(b.date));
   }
 }
 
@@ -431,6 +494,14 @@ String? _nullableText(Map<String, dynamic> data, String key) {
     throw const ApiFailure('INVALID_RESPONSE');
   }
   return value as String?;
+}
+
+bool _optionalFlag(Map<String, dynamic> data, String key) {
+  final value = data[key];
+  if (value != null && value is! bool) {
+    throw const ApiFailure('INVALID_RESPONSE');
+  }
+  return value == true;
 }
 
 DateTime _date(String value) {

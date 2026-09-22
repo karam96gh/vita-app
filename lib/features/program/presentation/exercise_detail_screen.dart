@@ -74,26 +74,26 @@ class ExerciseDetailScreen extends ConsumerWidget {
           'exerciseRest',
         ),
     ];
-    final canStart = !exercise.cancelled && !exercise.done;
+    // Exercises repeat without limit, so only cancellation hides the action.
+    final now = DateTime.now();
     return Scaffold(
       appBar: AppBar(title: Text(context.t('exercises'))),
-      bottomNavigationBar: canStart
-          ? SafeArea(
+      bottomNavigationBar: exercise.cancelled
+          ? null
+          : SafeArea(
               minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: StartProgramButton(
                 label: context.t(
                   exercise.inProgress
                       ? 'continueExercises'
+                      : exercise.doneToday(now)
+                      ? 'repeatExercise'
                       : 'startThisExercise',
                 ),
-                onPressed: () => startPlayer(
-                  context,
-                  startId: exercise.id,
-                  sessionId: exercise.sessionId,
-                ),
+                // The whole-program feed carries today's counts.
+                onPressed: () => startPlayer(context, startId: exercise.id),
               ),
-            )
-          : null,
+            ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
@@ -137,7 +137,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
               );
             },
           ),
-          if (exercise.cancelled || exercise.done || exercise.inProgress) ...[
+          if (ExerciseStateBadge.shows(exercise)) ...[
             const SizedBox(height: 10),
             Align(
               alignment: AlignmentDirectional.centerStart,

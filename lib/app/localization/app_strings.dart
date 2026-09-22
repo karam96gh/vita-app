@@ -211,6 +211,22 @@ class AppStrings {
     'nothingLeft': ['لا توجد تمارين متبقية هنا', 'No exercises left here'],
     'unlinkedSession': ['غير مرتبط بجلسة', 'Not linked to a session'],
     'fromSession': ['من الجلسة', 'From session'],
+    'doneToday': ['تم اليوم', 'Done today'],
+    'skippedToday': ['تم تخطيه اليوم', 'Skipped today'],
+    'repeatExercise': ['كرّر التمرين', 'Do it again'],
+    'activeDays': ['أيام نشطة', 'Active days'],
+    'totalCompletions': ['مرات الإنجاز', 'Completions'],
+    'streakLabel': ['أيام متتالية', 'Day streak'],
+    'todayDoneOf': ['أنجزت اليوم', 'Done today'],
+    'last14Days': ['آخر 14 يوماً', 'last 14 days'],
+    'durationNotElapsed': [
+      'لم يكتمل وقت التمرين بعد. تبقّى',
+      'The exercise time is not over yet. Remaining:',
+    ],
+    'EXERCISE_DURATION_NOT_ELAPSED': [
+      'لم يكتمل وقت التمرين بعد. أكمل التمرين ثم أعد المحاولة.',
+      'The exercise time is not over yet. Finish it, then try again.',
+    ],
     'exerciseCompleted': ['تم إنجازه', 'Completed'],
     'exerciseSkipped': ['تم تخطيه', 'Skipped'],
     'actionsUnavailable': [

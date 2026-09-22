@@ -51,6 +51,11 @@ class PatientRepository {
       });
   }
 
+  Future<List<DailyCompletion>> daily({int days = 14}) async =>
+      DailyCompletion.listFrom(
+        await api.get('/me/progress/daily', query: {'days': '$days'}),
+      );
+
   Future<List<SkipReason>> skipReasons() async =>
       SkipReason.listFrom(await api.get('/me/skip-reasons'), contract);
 

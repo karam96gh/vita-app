@@ -41,7 +41,14 @@ void main() {
   test('a finished program has no next exercise', () {
     final summary = ProgramSummary.of([
       item('a', execution: completedOn(now)),
-      item('b', execution: {'status': 'SKIPPED'}),
+      item(
+        'b',
+        execution: {
+          'status': 'SKIPPED',
+          'skipReasonId': 'r',
+          'updatedAt': now.toUtc().toIso8601String(),
+        },
+      ),
     ], now);
     expect(summary.complete, isTrue);
     expect(summary.next, isNull);
@@ -137,9 +144,8 @@ void main() {
       item('gone', status: 'CANCELLED', execution: completedOn(now)),
     ];
     final summary = ProgramSummary.of(items, now);
-    expect(summary.adherence, 0.5);
-    expect(summary.activeTime, const Duration(minutes: 3));
-    expect(summary.skippedCount, 1);
+    // Only 'a' was completed today; 'b' three days ago is due again.
+    expect(summary.doneToday, 1);
     expect(summary.inProgressCount, 1);
     expect(summary.recent.map((e) => e.id), ['a', 'b']);
     expect(summary.recent.last.completionNote, 'شعرت بألم');
@@ -149,6 +155,61 @@ void main() {
     expect(daily.values.last, 1);
     expect(daily[DateTime(2026, 9, 19)], 1);
     expect(daily.values.reduce((a, b) => a + b), 2);
+  });
+
+  test('daily targets come from todayCompletedCount and timesPerDay', () {
+    final twiceOfThree = item(
+      'three',
+      extra: {'timesPerDay': 3, 'todayCompletedCount': 2},
+      execution: completedOn(now),
+    );
+    expect(twiceOfThree.dailyTarget, 3);
+    expect(twiceOfThree.completedToday(now), 2);
+    expect(twiceOfThree.doneToday(now), isFalse);
+    expect(twiceOfThree.allows('start'), isTrue);
+
+    final done = item(
+      'once',
+      extra: {'timesPerDay': null, 'todayCompletedCount': 1},
+    );
+    expect(done.doneToday(now), isTrue);
+
+    // Yesterday's completion does not satisfy today.
+    final yesterday = item(
+      'y',
+      execution: completedOn(now.subtract(const Duration(days: 1))),
+    );
+    expect(yesterday.doneToday(now), isFalse);
+
+    final summary = ProgramSummary.of([twiceOfThree, done, yesterday], now);
+    expect(summary.finished, 1);
+    expect(summary.next?.id, 'three');
+    // Two remaining repetitions of 'three' plus one of 'y'.
+    expect(
+      summary.remainingMinutes,
+      ((ProgramSummary.estimateSeconds(twiceOfThree) +
+                  ProgramSummary.estimateSeconds(yesterday)) /
+              60)
+          .ceil(),
+    );
+  });
+
+  test('week and streak follow the server daily calendar', () {
+    // Server days run two days ahead of this device's clock.
+    final daily = DailyCompletion.listFrom([
+      for (var day = 11; day <= 24; day++)
+        {
+          'date': '2026-09-${day.toString().padLeft(2, '0')}',
+          'completed': day >= 21 ? 2 : (day == 19 ? 1 : 0),
+        },
+    ]);
+    final summary = ProgramSummary.of([item('a')], now, daily: daily);
+    expect(summary.week.keys.first, DateTime(2026, 9, 18));
+    expect(summary.week.keys.last, DateTime(2026, 9, 24));
+    expect(summary.week.values.toList(), [
+      false, true, false, true, true, true, true, //
+    ]);
+    expect(summary.streak, 4);
   });
 
   test('all-exercises response keeps the owning session', () {

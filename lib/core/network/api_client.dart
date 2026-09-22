@@ -186,7 +186,7 @@ class ApiClient {
     } on DioException catch (error) {
       final data = error.response?.data;
       if (data is Map<String, dynamic> && data['code'] is String) {
-        throw ApiFailure(data['code'] as String);
+        throw ApiFailure(data['code'] as String, data);
       }
       throw ApiFailure(switch (error.type) {
         DioExceptionType.connectionTimeout ||

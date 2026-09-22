@@ -17,7 +17,9 @@ class ProgressScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => AppPage(
     title: context.t('progress'),
     onRefresh: () async {
-      ref.invalidate(programProvider);
+      ref
+        ..invalidate(programProvider)
+        ..invalidate(dailyProvider);
       await ref.read(programProvider.future);
     },
     child: AsyncContent(
@@ -26,15 +28,20 @@ class ProgressScreen extends ConsumerWidget {
       skeleton: const AppListSkeleton(count: 3, lines: 2),
       builder: (items) {
         final now = DateTime.now();
-        final summary = ProgramSummary.of(items, now);
+        final daily = ref.watch(dailyProvider).valueOrNull;
+        final summary = ProgramSummary.of(items, now, daily: daily);
+        // Server days when available; otherwise the latest-execution estimate.
+        final counts = daily != null && daily.isNotEmpty
+            ? {for (final day in daily) day.date: day.completed}
+            : ProgramSummary.dailyCompletions(items, now);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _AdherenceCard(summary: summary),
+            _TodayCard(summary: summary),
             const SizedBox(height: 16),
-            _StatRow(summary: summary),
+            _StatRow(summary: summary, counts: counts),
             const SizedBox(height: 16),
-            _DailyChart(counts: ProgramSummary.dailyCompletions(items, now)),
+            _DailyChart(counts: counts),
             const SizedBox(height: 28),
             Text(context.t('recentActivity'), style: AppTypography.section),
             const SizedBox(height: 12),
@@ -54,14 +61,14 @@ class ProgressScreen extends ConsumerWidget {
   );
 }
 
-class _AdherenceCard extends StatelessWidget {
-  const _AdherenceCard({required this.summary});
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.summary});
   final ProgramSummary summary;
   @override
   Widget build(BuildContext context) {
-    final done = summary.active
-        .where((item) => item.done && !item.skipped)
-        .length;
+    final fraction = summary.total == 0
+        ? 0.0
+        : summary.doneToday / summary.total;
     return AppCard(
       color: AppColors.primary,
       child: Row(
@@ -71,12 +78,12 @@ class _AdherenceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  context.t('adherence'),
+                  context.t('todayDoneOf'),
                   style: AppTypography.section.copyWith(color: Colors.white),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${ltr('$done')} ${context.t('ofWord')} '
+                  '${ltr('${summary.doneToday}')} ${context.t('ofWord')} '
                   '${ltr('${summary.total}')} ${context.t('exercisesCount')}',
                   style: const TextStyle(color: Color(0xFFD6DAEF)),
                 ),
@@ -85,8 +92,8 @@ class _AdherenceCard extends StatelessWidget {
           ),
           AppProgressRing(
             size: 84,
-            progress: summary.adherence,
-            value: ltr('${(summary.adherence * 100).round()}%'),
+            progress: fraction,
+            value: ltr('${(fraction * 100).round()}%'),
             label: '',
           ),
         ],
@@ -96,26 +103,22 @@ class _AdherenceCard extends StatelessWidget {
 }
 
 class _StatRow extends StatelessWidget {
-  const _StatRow({required this.summary});
+  const _StatRow({required this.summary, required this.counts});
   final ProgramSummary summary;
+  final Map<DateTime, int> counts;
   @override
   Widget build(BuildContext context) {
-    final done = summary.active
-        .where((item) => item.done && !item.skipped)
-        .length;
+    final activeDays = counts.values.where((value) => value > 0).length;
+    final completions = counts.values.fold(0, (sum, value) => sum + value);
     final stats = [
-      ('summaryCompleted', ltr('$done'), Icons.check_circle_rounded),
+      ('activeDays', ltr('$activeDays'), Icons.event_available_rounded),
+      ('totalCompletions', ltr('$completions'), Icons.check_circle_rounded),
+      (
+        'streakLabel',
+        ltr('${summary.streak}'),
+        Icons.local_fire_department_rounded,
+      ),
       ('running', ltr('${summary.inProgressCount}'), Icons.timelapse_rounded),
-      (
-        'summarySkipped',
-        ltr('${summary.skippedCount}'),
-        Icons.fast_forward_rounded,
-      ),
-      (
-        'summaryTime',
-        ltr(clock(summary.activeTime.inSeconds)),
-        Icons.timer_outlined,
-      ),
     ];
     return Row(
       children: [

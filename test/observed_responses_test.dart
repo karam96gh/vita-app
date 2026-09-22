@@ -29,6 +29,61 @@ void main() {
     expect(reasons.every((r) => !r.isOther), isTrue);
   });
 
+  test('requiresText marks the Other reason', () {
+    final reasons = SkipReason.listFrom([
+      {'id': 'a', 'nameAr': 'ألم', 'requiresText': false},
+      {'id': 'o', 'nameAr': 'أخرى', 'requiresText': true},
+      {'id': 'b', 'nameAr': 'ضيق وقت'},
+    ], PatientContract({}));
+    expect(reasons.map((r) => r.isOther), [false, true, false]);
+    expect(
+      () => SkipReason.listFrom([
+        {'id': 'x', 'nameAr': 'x', 'requiresText': 'yes'},
+      ], PatientContract({})),
+      throwsA(isA<ApiFailure>()),
+    );
+  });
+
+  test('daily completions decode and reject malformed days', () {
+    final days = DailyCompletion.listFrom([
+      {'date': '2026-09-22', 'completed': 5},
+      {'date': '2026-09-21', 'completed': 0},
+    ]);
+    expect(days.map((d) => d.date), [
+      DateTime(2026, 9, 21),
+      DateTime(2026, 9, 22),
+    ]);
+    expect(days.last.completed, 5);
+    for (final bad in [
+      {'items': []},
+      [
+        {'date': 'yesterday', 'completed': 1},
+      ],
+      [
+        {'date': '2026-09-22', 'completed': -1},
+      ],
+    ]) {
+      expect(() => DailyCompletion.listFrom(bad), throwsA(isA<ApiFailure>()));
+    }
+  });
+
+  test('error details reach the caller', () {
+    try {
+      ApiResponseParser.parse({
+        'success': false,
+        'code': 'EXERCISE_DURATION_NOT_ELAPSED',
+        'requiredSeconds': 90,
+        'elapsedSeconds': 40,
+      });
+      fail('expected a failure');
+    } on ApiFailure catch (error) {
+      expect(error.code, 'EXERCISE_DURATION_NOT_ELAPSED');
+      expect(error.intDetail('requiredSeconds'), 90);
+      expect(error.intDetail('elapsedSeconds'), 40);
+      expect(error.intDetail('missing'), isNull);
+    }
+  });
+
   test('a mapped Other flag is honoured', () {
     final reasons = SkipReason.listFrom([
       {'id': 'o', 'nameAr': 'أخرى', 'isOther': true},

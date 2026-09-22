@@ -18,6 +18,7 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _refresh(WidgetRef ref) async {
     ref
       ..invalidate(programProvider)
+      ..invalidate(dailyProvider)
       ..invalidate(appointmentsProvider)
       ..invalidate(profileProvider)
       ..invalidate(therapistMessageProvider);
@@ -230,8 +231,13 @@ class _WeekCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(programProvider).valueOrNull;
     if (items == null || items.isEmpty) return const SizedBox.shrink();
-    final summary = ProgramSummary.of(items, DateTime.now());
+    final summary = ProgramSummary.of(
+      items,
+      DateTime.now(),
+      daily: ref.watch(dailyProvider).valueOrNull,
+    );
     final language = Localizations.localeOf(context).languageCode;
+    // The last server day is "today" in the clinic's calendar.
     final today = summary.week.keys.last;
     return AppCard(
       child: Column(

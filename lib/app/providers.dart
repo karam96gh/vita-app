@@ -110,6 +110,11 @@ final programProvider = FutureProvider.autoDispose<List<AssignedExercise>>(
   (ref) => ref.watch(repositoryProvider).program(),
 );
 
+/// Last 14 clinic days of completions, oldest first.
+final dailyProvider = FutureProvider.autoDispose<List<DailyCompletion>>(
+  (ref) => ref.watch(repositoryProvider).daily(),
+);
+
 /// Latest therapist-authored message for the Today preview; null when none.
 final therapistMessageProvider = FutureProvider.autoDispose<ChatMessage?>((
   ref,

@@ -1,3 +1,4 @@
+import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -53,11 +54,12 @@ class ExerciseThumb extends StatelessWidget {
   final double size;
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     final (icon, color) = exercise.cancelled
         ? (Icons.block_rounded, Theme.of(context).colorScheme.error)
-        : exercise.done && !exercise.skipped
+        : exercise.doneToday(now)
         ? (Icons.check_rounded, AppColors.success)
-        : exercise.skipped
+        : exercise.skippedToday(now)
         ? (Icons.fast_forward_rounded, AppColors.muted)
         : exercise.inProgress
         ? (Icons.timelapse_rounded, AppColors.accent)
@@ -85,7 +87,7 @@ class ExerciseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dose = doseLabel(context, exercise);
-    final muted = exercise.cancelled || exercise.done;
+    final muted = exercise.cancelled || exercise.handledToday(DateTime.now());
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(20),
@@ -170,7 +172,7 @@ class ExerciseTile extends StatelessWidget {
                         },
                       ),
                     ],
-                    if (exercise.done || exercise.inProgress) ...[
+                    if (ExerciseStateBadge.shows(exercise)) ...[
                       const SizedBox(height: 8),
                       ExerciseStateBadge(exercise: exercise),
                     ],
@@ -186,28 +188,55 @@ class ExerciseTile extends StatelessWidget {
   }
 }
 
+/// Today's status: in progress, done/skipped today, or "1 من 3 اليوم".
 class ExerciseStateBadge extends StatelessWidget {
   const ExerciseStateBadge({super.key, required this.exercise});
   final AssignedExercise exercise;
+
+  static bool shows(AssignedExercise exercise) {
+    final now = DateTime.now();
+    return exercise.cancelled ||
+        exercise.inProgress ||
+        exercise.handledToday(now) ||
+        exercise.dailyTarget > 1;
+  }
+
   @override
-  Widget build(BuildContext context) => exercise.cancelled
-      ? AppBadge(text: context.t('cancelledExercise'), danger: true)
-      : exercise.skipped
-      ? AppBadge(
-          text: context.t('exerciseSkipped'),
-          neutral: true,
-          icon: Icons.fast_forward_rounded,
-        )
-      : exercise.done
-      ? AppBadge(
-          text: context.t('exerciseCompleted'),
-          icon: Icons.check_circle_rounded,
-        )
-      : AppBadge(
-          text: context.t('running'),
-          neutral: true,
-          icon: Icons.timelapse_rounded,
-        );
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final count = exercise.completedToday(now);
+    final target = exercise.dailyTarget;
+    final tally =
+        '${ltr('${min(count, target)}')} ${context.t('ofWord')} '
+        '${ltr('$target')} ${context.t('today')}';
+    if (exercise.cancelled) {
+      return AppBadge(text: context.t('cancelledExercise'), danger: true);
+    }
+    if (exercise.inProgress) {
+      return AppBadge(
+        text: context.t('running'),
+        neutral: true,
+        icon: Icons.timelapse_rounded,
+      );
+    }
+    if (exercise.doneToday(now)) {
+      return AppBadge(
+        text: target > 1 ? tally : context.t('doneToday'),
+        icon: Icons.check_circle_rounded,
+      );
+    }
+    if (exercise.skippedToday(now)) {
+      return AppBadge(
+        text: context.t('skippedToday'),
+        neutral: true,
+        icon: Icons.fast_forward_rounded,
+      );
+    }
+    if (target > 1) {
+      return AppBadge(text: tally, neutral: true, icon: Icons.repeat_rounded);
+    }
+    return const SizedBox.shrink();
+  }
 }
 
 class WarningNote extends StatelessWidget {

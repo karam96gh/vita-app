@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/localization/app_strings.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/errors/api_failure.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../patient/domain/models.dart';
 import '../../program/domain/exercise_run.dart';
@@ -35,7 +36,15 @@ class _PlayerState extends ConsumerState<ExercisePlayerScreen> {
       : exercisesProvider(widget.sessionId!);
 
   void _snapshot(List<AssignedExercise> items) {
-    final open = items.where((item) => !item.cancelled && !item.done).toList();
+    final now = DateTime.now();
+    // Due today, plus an explicitly chosen exercise the patient repeats.
+    final open = items
+        .where(
+          (item) =>
+              !item.cancelled &&
+              (!item.handledToday(now) || item.id == widget.startId),
+        )
+        .toList();
     final start = open.indexWhere((item) => item.id == widget.startId);
     _queue = start <= 0 ? open : [...open.sublist(start), ...open.take(start)];
   }
@@ -255,6 +264,7 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
   void _refreshData() {
     ref
       ..invalidate(programProvider)
+      ..invalidate(dailyProvider)
       ..invalidate(progressProvider);
     if (widget.sessionId != null) {
       ref.invalidate(exercisesProvider(widget.sessionId!));
@@ -335,6 +345,27 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
       }
       _refreshData();
       widget.onFinished(true);
+    } on ApiFailure catch (error) {
+      if (!mounted) return;
+      // The server measures from its own start stamp; tell the patient exactly
+      // how long is left instead of a generic failure.
+      final required = error.intDetail('requiredSeconds');
+      final elapsed = error.intDetail('elapsedSeconds');
+      if (error.code == 'EXERCISE_DURATION_NOT_ELAPSED' &&
+          required != null &&
+          elapsed != null &&
+          required > elapsed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${context.t('durationNotElapsed')} '
+              '${ltr(clock(required - elapsed))}',
+            ),
+          ),
+        );
+      } else {
+        showFailure(context, error);
+      }
     } on Object catch (error) {
       if (mounted) showFailure(context, error);
     } finally {
