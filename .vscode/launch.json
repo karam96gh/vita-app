@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Vita (development)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor",
+        "development",
+        "--dart-define-from-file",
+        "config/development.local.json"
+      ]
+    },
+    {
+      "name": "Vita (staging)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor",
+        "staging",
+        "--dart-define-from-file",
+        "config/staging.local.json"
+      ]
+    },
+    {
+      "name": "Vita (production)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor",
+        "production",
+        "--dart-define-from-file",
+        "config/production.local.json"
+      ]
+    }
+  ]
+}

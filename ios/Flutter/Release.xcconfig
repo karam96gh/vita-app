@@ -1,0 +1,4 @@
+#include "Generated.xcconfig"
+APP_DISPLAY_NAME = Vita
+APS_ENVIRONMENT = production
+CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements

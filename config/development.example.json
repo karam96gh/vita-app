@@ -1,0 +1,7 @@
+{
+  "ENVIRONMENT": "development",
+  "APP_NAME": "Vita Dev",
+  "GATEWAY_BASE_URL": "https://system.vitaxirpro.com",
+  "FIREBASE_ENABLED": false,
+  "PATIENT_SCHEMA": "{}"
+}

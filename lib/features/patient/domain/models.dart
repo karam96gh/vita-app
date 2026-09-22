@@ -1,0 +1,371 @@
+import '../../../core/errors/api_failure.dart';
+import '../../../core/network/patient_contract.dart';
+
+class Appointment {
+  const Appointment({
+    required this.id,
+    required this.type,
+    required this.start,
+    required this.end,
+    required this.status,
+    this.notes,
+  });
+  final String id, type, status;
+  final DateTime start, end;
+  final String? notes;
+  factory Appointment.fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    try {
+      return Appointment(
+        id: json['id'] as String,
+        type: json['appointmentType'] as String,
+        start: DateTime.parse(json['startTime'] as String).toUtc(),
+        end: DateTime.parse(json['endTime'] as String).toUtc(),
+        status: json['status'] as String,
+        notes: json['notes'] as String?,
+      );
+    } on Object {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+  }
+}
+
+class PatientProfile {
+  const PatientProfile(this.name, this.phone);
+  final String name;
+  final String? phone;
+
+  factory PatientProfile.fromJson(Object? value) {
+    final patient = _object(_object(value)['erpPatient']);
+    final name = [
+      _text(patient, 'firstName').trim(),
+      _text(patient, 'lastName').trim(),
+    ].where((part) => part.isNotEmpty).join(' ');
+    if (name.isEmpty) throw const ApiFailure('INVALID_RESPONSE');
+    return PatientProfile(name, _nullableText(patient, 'phone'));
+  }
+}
+
+class PatientSession {
+  const PatientSession(
+    this.id,
+    this.number,
+    this.date,
+    this.attendanceConfirmed,
+    this.alreadyRated,
+  );
+  final String id;
+  final int number;
+  final DateTime date;
+  final bool attendanceConfirmed;
+  final bool? alreadyRated;
+
+  factory PatientSession.fromJson(Object? value) {
+    final data = _object(value);
+    final number = data['sessionNumber'];
+    final attendance = data['attendanceConfirmed'];
+    if (number is! int || number < 0 || attendance is! bool) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    return PatientSession(
+      _text(data, 'id'),
+      number,
+      _date(_text(data, 'sessionDate')),
+      attendance,
+      // The session list does not expose rating history.
+      null,
+    );
+  }
+}
+
+class AssignedExercise {
+  AssignedExercise(Object? json, PatientContract c)
+    : this._(
+        id: c.text(json, 'exercise.id'),
+        name: c.text(json, 'exercise.name'),
+        status: c.text(json, 'exercise.assignmentStatus'),
+        instructions: c.optionalText(json, 'exercise.instructions'),
+        mediaUrl: c.optionalText(json, 'exercise.mediaUrl'),
+        mediaType: c.optionalText(json, 'exercise.mediaType'),
+        canStart: c.flag(json, 'exercise.canStart'),
+        canComplete: c.flag(json, 'exercise.canComplete'),
+        canSkip: c.flag(json, 'exercise.canSkip'),
+      );
+  AssignedExercise._({
+    required this.id,
+    required this.name,
+    required this.status,
+    this.instructions,
+    this.mediaUrl,
+    this.mediaType,
+    this.nameEn,
+    this.instructionsEn,
+    this.description,
+    this.descriptionEn,
+    this.method,
+    this.methodEn,
+    this.warnings,
+    this.warningsEn,
+    this.mistakes,
+    this.mistakesEn,
+    this.frequency,
+    this.frequencyEn,
+    this.sortOrder = 0,
+    this.durationSeconds,
+    this.sets,
+    this.reps,
+    this.holdSeconds,
+    this.restSeconds,
+    this.canStart,
+    this.canComplete,
+    this.canSkip,
+    this.executed = false,
+    this.executionStatus,
+    this.finishedAt,
+  });
+  factory AssignedExercise.fromJson(Object? value, PatientContract contract) {
+    final data = _object(value);
+    final exercise = _object(data['exercise']);
+    int? count(String key) {
+      final v = data[key];
+      if (v == null) return null;
+      if (v is! int || v < 0) throw const ApiFailure('INVALID_RESPONSE');
+      return v;
+    }
+
+    bool? permission(String action) =>
+        contract.paths.containsKey('exercise.$action')
+        ? contract.flag(data, 'exercise.$action')
+        : null;
+    final execution = data['execution'];
+    if (execution != null && execution is! Map<String, dynamic>) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    final finished = execution == null
+        ? null
+        : _nullableText(execution, 'completedAt') ??
+              _nullableText(execution, 'skippedAt');
+    return AssignedExercise._(
+      id: _text(data, 'id'),
+      name: _text(exercise, 'nameAr'),
+      nameEn: _nullableText(exercise, 'nameEn'),
+      status: _text(data, 'status'),
+      instructions: _nullableText(data, 'customInstructionAr'),
+      instructionsEn: _nullableText(data, 'customInstructionEn'),
+      description: _nullableText(exercise, 'descriptionAr'),
+      descriptionEn: _nullableText(exercise, 'descriptionEn'),
+      method: _nullableText(exercise, 'executionMethodAr'),
+      methodEn: _nullableText(exercise, 'executionMethodEn'),
+      warnings: _nullableText(exercise, 'warningsAr'),
+      warningsEn: _nullableText(exercise, 'warningsEn'),
+      mistakes: _nullableText(exercise, 'commonMistakesAr'),
+      mistakesEn: _nullableText(exercise, 'commonMistakesEn'),
+      frequency: _nullableText(data, 'frequencyTextAr'),
+      frequencyEn: _nullableText(data, 'frequencyTextEn'),
+      mediaUrl: _nullableText(exercise, 'mediaUrl'),
+      mediaType: _nullableText(exercise, 'mediaType'),
+      sortOrder: count('sortOrder') ?? 0,
+      durationSeconds: count('durationSeconds'),
+      sets: count('sets'),
+      reps: count('reps'),
+      holdSeconds: count('holdSeconds'),
+      restSeconds: count('restSeconds'),
+      canStart: permission('canStart'),
+      canComplete: permission('canComplete'),
+      canSkip: permission('canSkip'),
+      executed: execution != null,
+      executionStatus: execution == null
+          ? null
+          : _nullableText(execution, 'status'),
+      finishedAt: finished == null ? null : _date(finished),
+    );
+  }
+  final String? nameEn,
+      instructionsEn,
+      description,
+      descriptionEn,
+      method,
+      methodEn,
+      warnings,
+      warningsEn,
+      mistakes,
+      mistakesEn,
+      frequency,
+      frequencyEn;
+  final int sortOrder;
+  final int? durationSeconds, sets, reps, holdSeconds, restSeconds;
+  String? localized(String? ar, String? en, String language) {
+    final preferred = language == 'en' ? en : ar;
+    final fallback = language == 'en' ? ar : en;
+    return preferred?.trim().isNotEmpty == true
+        ? preferred
+        : fallback?.trim().isNotEmpty == true
+        ? fallback
+        : null;
+  }
+
+  final String id, name, status;
+  final String? instructions, mediaUrl, mediaType;
+
+  /// Explicit server permissions; null means "derive from execution state".
+  final bool? canStart, canComplete, canSkip;
+  final bool executed;
+  final String? executionStatus;
+  final DateTime? finishedAt;
+  bool get cancelled => status == 'CANCELLED';
+  bool get done =>
+      finishedAt != null ||
+      executionStatus == 'COMPLETED' ||
+      executionStatus == 'SKIPPED';
+  bool get skipped => executionStatus == 'SKIPPED';
+  bool get inProgress => executed && !done;
+
+  // Backend confirmed only CANCELLED blocks actions; the rest follows the
+  // natural not-started -> in-progress -> finished flow, and the server still
+  // rejects any invalid transition with INVALID_ACTION.
+  bool allows(String action) {
+    if (cancelled) return false;
+    final explicit = switch (action) {
+      'start' => canStart,
+      'complete' => canComplete,
+      'skip' => canSkip,
+      _ => false,
+    };
+    if (explicit != null) return explicit;
+    return switch (action) {
+      'start' => !executed,
+      'complete' => inProgress,
+      'skip' => !done,
+      _ => false,
+    };
+  }
+}
+
+class SkipReason {
+  const SkipReason(this.id, this.label, this.isOther);
+  final String id, label;
+  final bool isOther;
+}
+
+class ProgressSummary {
+  const ProgressSummary(
+    this.active,
+    this.completed,
+    this.skipped,
+    this.running,
+  );
+  final int active, completed, skipped, running;
+
+  factory ProgressSummary.fromJson(Object? value) {
+    final data = _object(value);
+    int count(String key) {
+      final value = data[key];
+      if (value is! int || value < 0) {
+        throw const ApiFailure('INVALID_RESPONSE');
+      }
+      return value;
+    }
+
+    return ProgressSummary(
+      count('totalActiveAssignments'),
+      count('completed'),
+      count('skipped'),
+      count('inProgress'),
+    );
+  }
+}
+
+class ChatMessage {
+  const ChatMessage(this.id, this.text, this.at, this.mine);
+  final String id, text;
+  final DateTime at;
+  final bool mine;
+}
+
+class Conversation {
+  const Conversation(this.id, this.messages);
+  final String id;
+  final List<ChatMessage> messages;
+}
+
+class PatientNotification {
+  const PatientNotification(
+    this.id,
+    this.title,
+    this.body,
+    this.read,
+    this.at, {
+    this.titleEn,
+    this.bodyEn,
+  });
+  final String id, title, body;
+  final String? titleEn, bodyEn;
+  final bool read;
+  final DateTime at;
+
+  String localizedTitle(String language) =>
+      language == 'en' && titleEn?.trim().isNotEmpty == true ? titleEn! : title;
+  String localizedBody(String language) =>
+      language == 'en' && bodyEn?.trim().isNotEmpty == true ? bodyEn! : body;
+
+  factory PatientNotification.fromJson(Object? value) {
+    final data = _object(value);
+    final sentAt = _date(_text(data, 'sentAt'));
+    // An absent readAt is malformed; null explicitly means unread.
+    if (!data.containsKey('readAt')) throw const ApiFailure('INVALID_RESPONSE');
+    final readAt = _nullableText(data, 'readAt');
+    if (readAt != null) _date(readAt);
+    return PatientNotification(
+      _text(data, 'id'),
+      _text(data, 'titleAr'),
+      _text(data, 'bodyAr'),
+      readAt != null,
+      sentAt,
+      titleEn: _nullableText(data, 'titleEn'),
+      bodyEn: _nullableText(data, 'bodyEn'),
+    );
+  }
+}
+
+Map<String, dynamic> _object(Object? value) {
+  if (value is! Map<String, dynamic>) {
+    throw const ApiFailure('INVALID_RESPONSE');
+  }
+  return value;
+}
+
+String _text(Map<String, dynamic> data, String key) {
+  final value = data[key];
+  if (value is! String) throw const ApiFailure('INVALID_RESPONSE');
+  return value;
+}
+
+String? _nullableText(Map<String, dynamic> data, String key) {
+  final value = data[key];
+  if (value != null && value is! String) {
+    throw const ApiFailure('INVALID_RESPONSE');
+  }
+  return value as String?;
+}
+
+DateTime _date(String value) {
+  final result = DateTime.tryParse(value);
+  if (result == null) throw const ApiFailure('INVALID_RESPONSE');
+  return result.toUtc();
+}
+
+class Validation {
+  static bool requiredText(String value) => value.trim().isNotEmpty;
+  static String? skip(SkipReason? reason, String text) {
+    if (reason == null) return 'SKIP_REASON_REQUIRED';
+    if (reason.isOther && text.trim().isEmpty) {
+      return 'SKIP_REASON_TEXT_REQUIRED';
+    }
+    return null;
+  }
+
+  static bool rating(int score, bool completed) =>
+      completed && score >= 1 && score <= 5;
+}

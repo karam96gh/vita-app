@@ -1,0 +1,7 @@
+{
+  "ENVIRONMENT": "staging",
+  "APP_NAME": "Vita Staging",
+  "GATEWAY_BASE_URL": "",
+  "FIREBASE_ENABLED": false,
+  "PATIENT_SCHEMA": "{}"
+}

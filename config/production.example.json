@@ -1,0 +1,7 @@
+{
+  "ENVIRONMENT": "production",
+  "APP_NAME": "Vita",
+  "GATEWAY_BASE_URL": "",
+  "FIREBASE_ENABLED": false,
+  "PATIENT_SCHEMA": "{}"
+}
