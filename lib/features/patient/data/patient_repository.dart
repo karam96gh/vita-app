@@ -51,19 +51,8 @@ class PatientRepository {
       });
   }
 
-  Future<List<SkipReason>> skipReasons() async {
-    final data = await api.get('/me/skip-reasons');
-    return contract
-        .list(data, 'skipReasons.items')
-        .map(
-          (item) => SkipReason(
-            contract.text(item, 'skipReason.id'),
-            contract.text(item, 'skipReason.label'),
-            contract.flag(item, 'skipReason.isOther'),
-          ),
-        )
-        .toList();
-  }
+  Future<List<SkipReason>> skipReasons() async =>
+      SkipReason.listFrom(await api.get('/me/skip-reasons'), contract);
 
   Future<void> exerciseAction(
     AssignedExercise exercise,
@@ -104,23 +93,52 @@ class PatientRepository {
     contract.flag(item, 'message.mine'),
   );
 
+  /// Observed: {conversation: {id, erpPatientId, erpTherapistId, active, …},
+  /// messages: [...]}. Individual message fields are still unconfirmed, so
+  /// messages keep going through the contract mapping.
   Future<Conversation> conversation() async {
     final data = await api.get('/me/chat');
-    if (data is! Map<String, dynamic> || data['messages'] is! List) {
+    final conversation = data is Map<String, dynamic>
+        ? data['conversation']
+        : null;
+    final messages = data is Map<String, dynamic> ? data['messages'] : null;
+    if (conversation is! Map<String, dynamic> ||
+        conversation['id'] is! String ||
+        messages is! List) {
       throw const ApiFailure('INVALID_RESPONSE');
     }
+    _probeMessages(messages);
     return Conversation(
-      contract.text(data['conversation'], 'conversation.id'),
-      (data['messages'] as List).map(_message).toList(),
+      conversation['id'] as String,
+      messages.map(_message).toList(),
     );
   }
 
+  /// Observed: a plain list.
   Future<List<ChatMessage>> messages(DateTime? after) async {
     final data = await api.get(
       '/me/chat/messages',
       query: {if (after != null) 'after': after.toUtc().toIso8601String()},
     );
-    return contract.list(data, 'messages.items').map(_message).toList();
+    if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
+    _probeMessages(data);
+    return data.map(_message).toList();
+  }
+
+  // TEMP-SHAPE-PROBE (debug builds only): logs the field names and types of
+  // the first message, never its content. Remove once the shape is mapped.
+  void _probeMessages(List<Object?> items) {
+    assert(() {
+      final first = items.firstOrNull;
+      if (first is Map) {
+        // ignore: avoid_print
+        print(
+          'VITA_PROBE message '
+          '${first.map((k, v) => MapEntry(k, v.runtimeType))}',
+        );
+      }
+      return true;
+    }());
   }
 
   Future<void> sendMessage(String text) async {

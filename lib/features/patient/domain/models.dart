@@ -279,9 +279,41 @@ class AssignedExercise {
 }
 
 class SkipReason {
-  const SkipReason(this.id, this.label, this.isOther);
+  const SkipReason(this.id, this.label, this.isOther, {this.labelEn});
   final String id, label;
+  final String? labelEn;
   final bool isOther;
+  String localizedLabel(String language) =>
+      language == 'en' && labelEn?.trim().isNotEmpty == true ? labelEn! : label;
+
+  /// Observed: a plain list of {id, nameAr, nameEn, sortOrder, active}. The
+  /// response has no "Other" marker; the server enforces free text itself
+  /// (SKIP_REASON_TEXT_REQUIRED), so it is only set from a mapped contract.
+  static List<SkipReason> listFrom(Object? data, PatientContract contract) {
+    if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
+    final reasons = <(int, SkipReason)>[];
+    for (final item in data) {
+      final json = _object(item);
+      if (json['active'] == false) continue;
+      final order = json['sortOrder'];
+      if (order != null && order is! int) {
+        throw const ApiFailure('INVALID_RESPONSE');
+      }
+      reasons.add((
+        order as int? ?? 0,
+        SkipReason(
+          _text(json, 'id'),
+          _text(json, 'nameAr'),
+          contract.paths.containsKey('skipReason.isOther')
+              ? contract.flag(json, 'skipReason.isOther')
+              : false,
+          labelEn: _nullableText(json, 'nameEn'),
+        ),
+      ));
+    }
+    reasons.sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final reason in reasons) reason.$2];
+  }
 }
 
 class ProgressSummary {

@@ -104,7 +104,13 @@ class _SkipSheetState extends ConsumerState<SkipSheet> {
                             .map(
                               (r) => DropdownMenuItem(
                                 value: r.id,
-                                child: Text(r.label),
+                                child: Text(
+                                  r.localizedLabel(
+                                    Localizations.localeOf(
+                                      context,
+                                    ).languageCode,
+                                  ),
+                                ),
                               ),
                             )
                             .toList(),
