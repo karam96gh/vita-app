@@ -86,16 +86,10 @@ class PatientRepository {
     return ProgressSummary.fromJson(data);
   }
 
-  ChatMessage _message(Object? item) => ChatMessage(
-    contract.text(item, 'message.id'),
-    contract.text(item, 'message.text'),
-    DateTime.parse(contract.text(item, 'message.at')).toUtc(),
-    contract.flag(item, 'message.mine'),
-  );
+  ChatMessage _message(Object? item) => ChatMessage.fromJson(item);
 
   /// Observed: {conversation: {id, erpPatientId, erpTherapistId, active, …},
-  /// messages: [...]}. Individual message fields are still unconfirmed, so
-  /// messages keep going through the contract mapping.
+  /// messages: [...]}.
   Future<Conversation> conversation() async {
     final data = await api.get('/me/chat');
     final conversation = data is Map<String, dynamic>
@@ -107,7 +101,6 @@ class PatientRepository {
         messages is! List) {
       throw const ApiFailure('INVALID_RESPONSE');
     }
-    _probeMessages(messages);
     return Conversation(
       conversation['id'] as String,
       messages.map(_message).toList(),
@@ -121,24 +114,7 @@ class PatientRepository {
       query: {if (after != null) 'after': after.toUtc().toIso8601String()},
     );
     if (data is! List) throw const ApiFailure('INVALID_RESPONSE');
-    _probeMessages(data);
     return data.map(_message).toList();
-  }
-
-  // TEMP-SHAPE-PROBE (debug builds only): logs the field names and types of
-  // the first message, never its content. Remove once the shape is mapped.
-  void _probeMessages(List<Object?> items) {
-    assert(() {
-      final first = items.firstOrNull;
-      if (first is Map) {
-        // ignore: avoid_print
-        print(
-          'VITA_PROBE message '
-          '${first.map((k, v) => MapEntry(k, v.runtimeType))}',
-        );
-      }
-      return true;
-    }());
   }
 
   Future<void> sendMessage(String text) async {

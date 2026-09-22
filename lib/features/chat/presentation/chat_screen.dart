@@ -96,9 +96,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
       if (!mounted || generation != _generation) return;
       final base = active.id == current.id ? current : active;
       final ordered = [...base.messages]..sort((a, b) => a.at.compareTo(b.at));
+      // `after` is strictly greater-than on the server; overlap by a second so
+      // a message sharing the last timestamp is not lost (merge dedupes by id).
       final messages = await ref
           .read(repositoryProvider)
-          .messages(ordered.isEmpty ? null : ordered.last.at);
+          .messages(
+            ordered.isEmpty
+                ? null
+                : ordered.last.at.subtract(const Duration(seconds: 1)),
+          );
       if (!mounted || generation != _generation) return;
       final merged = {
         for (final message in [

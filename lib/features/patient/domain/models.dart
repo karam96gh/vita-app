@@ -349,6 +349,22 @@ class ChatMessage {
   final String id, text;
   final DateTime at;
   final bool mine;
+
+  /// Confirmed by the backend: {id, messageText, sentAt, senderType, senderId}
+  /// where senderType is exactly "PATIENT" or "THERAPIST".
+  factory ChatMessage.fromJson(Object? value) {
+    final json = _object(value);
+    final sender = _text(json, 'senderType');
+    if (sender != 'PATIENT' && sender != 'THERAPIST') {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    return ChatMessage(
+      _text(json, 'id'),
+      _text(json, 'messageText'),
+      _date(_text(json, 'sentAt')),
+      sender == 'PATIENT',
+    );
+  }
 }
 
 class Conversation {

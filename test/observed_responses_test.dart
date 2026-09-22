@@ -36,6 +36,43 @@ void main() {
     expect(reasons.single.isOther, isTrue);
   });
 
+  test('chat messages decode the confirmed shape', () {
+    final mine = ChatMessage.fromJson({
+      'id': 'm1',
+      'messageText': 'مرحبا',
+      'sentAt': '2026-09-22T10:00:00.000Z',
+      'senderType': 'PATIENT',
+      'senderId': 'p1',
+    });
+    expect(
+      [mine.id, mine.text, mine.at, mine.mine],
+      ['m1', 'مرحبا', DateTime.utc(2026, 9, 22, 10), true],
+    );
+    final theirs = ChatMessage.fromJson({
+      'id': 'm2',
+      'messageText': 'أهلاً',
+      'sentAt': '2026-09-22T10:01:00.000Z',
+      'senderType': 'THERAPIST',
+    });
+    expect(theirs.mine, isFalse);
+    for (final bad in [
+      {'id': 'x', 'messageText': 't', 'sentAt': '2026-09-22T10:00:00Z'},
+      {
+        'id': 'x',
+        'messageText': 't',
+        'sentAt': '2026-09-22T10:00:00Z',
+        'senderType': 'ADMIN',
+      },
+    ]) {
+      expect(
+        () => ChatMessage.fromJson(bad),
+        throwsA(
+          isA<ApiFailure>().having((e) => e.code, 'code', 'INVALID_RESPONSE'),
+        ),
+      );
+    }
+  });
+
   test('malformed skip reasons fail explicitly', () {
     for (final value in [
       {'items': []},
