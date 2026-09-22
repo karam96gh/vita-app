@@ -42,8 +42,9 @@ class ProgramScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
             ],
-            SessionGroupedList(
+            ExerciseList(
               items: items,
+              showSession: true,
               sessions: ref.watch(sessionsProvider).valueOrNull,
             ),
           ],

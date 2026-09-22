@@ -209,7 +209,7 @@ class AppStrings {
     'summarySkipped': ['تخطيت', 'Skipped'],
     'summaryTime': ['مدة التمرين', 'Active time'],
     'nothingLeft': ['لا توجد تمارين متبقية هنا', 'No exercises left here'],
-    'unlinkedSession': ['تمارين غير مرتبطة بجلسة', 'Not linked to a session'],
+    'unlinkedSession': ['غير مرتبط بجلسة', 'Not linked to a session'],
     'fromSession': ['من الجلسة', 'From session'],
     'exerciseCompleted': ['تم إنجازه', 'Completed'],
     'exerciseSkipped': ['تم تخطيه', 'Skipped'],

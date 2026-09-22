@@ -77,8 +77,11 @@ class ExerciseThumb extends StatelessWidget {
 }
 
 class ExerciseTile extends StatelessWidget {
-  const ExerciseTile({super.key, required this.exercise});
+  const ExerciseTile({super.key, required this.exercise, this.session});
   final AssignedExercise exercise;
+
+  /// Owning treatment session, shown as a hint under the prescription.
+  final ({int? number, DateTime? date})? session;
   @override
   Widget build(BuildContext context) {
     final dose = doseLabel(context, exercise);
@@ -120,6 +123,51 @@ class ExerciseTile extends StatelessWidget {
                           color: AppColors.muted,
                           fontSize: 13,
                         ),
+                      ),
+                    ],
+                    if (session != null) ...[
+                      const SizedBox(height: 6),
+                      Builder(
+                        builder: (context) {
+                          final number = session!.number;
+                          final date = session!.date;
+                          final color = number == null
+                              ? AppColors.muted
+                              : AppColors.info;
+                          return Row(
+                            children: [
+                              Icon(
+                                Icons.event_note_rounded,
+                                size: 14,
+                                color: color,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  number == null
+                                      ? context.t('unlinkedSession')
+                                      : [
+                                          '${context.t('session')} '
+                                              '${ltr('$number')}',
+                                          if (date != null)
+                                            DateFormat.MMMd(
+                                              Localizations.localeOf(
+                                                context,
+                                              ).languageCode,
+                                            ).format(date.toLocal()),
+                                        ].join(' · '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                     if (exercise.done || exercise.inProgress) ...[
@@ -203,97 +251,19 @@ class WarningNote extends StatelessWidget {
   return (number: item.sessionNumber ?? match?.number, date: match?.date);
 }
 
-/// Program grouped by treatment session, newest session first.
-class SessionGroupedList extends StatelessWidget {
-  const SessionGroupedList({
-    super.key,
-    required this.items,
-    required this.sessions,
-  });
-  final List<AssignedExercise> items;
-  final List<PatientSession>? sessions;
-  @override
-  Widget build(BuildContext context) {
-    final groups = <String?, List<AssignedExercise>>{};
-    for (final item in items) {
-      groups.putIfAbsent(item.sessionId, () => []).add(item);
-    }
-    final keys = groups.keys.toList()
-      ..sort((a, b) {
-        if (a == null || b == null) return a == null ? 1 : -1;
-        final na = sessionOf(groups[a]!.first, sessions).number ?? 0;
-        final nb = sessionOf(groups[b]!.first, sessions).number ?? 0;
-        return nb.compareTo(na);
-      });
-    final language = Localizations.localeOf(context).languageCode;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final key in keys) ...[
-          Builder(
-            builder: (context) {
-              final group = groups[key]!;
-              final info = sessionOf(group.first, sessions);
-              final active = group.where((item) => !item.cancelled);
-              final title = key == null
-                  ? context.t('unlinkedSession')
-                  : [
-                      context.t('session'),
-                      if (info.number != null) ltr('${info.number}'),
-                    ].join(' ');
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
-                            ),
-                          ),
-                          if (info.date != null)
-                            Text(
-                              DateFormat.yMMMMEEEEd(
-                                language,
-                              ).format(info.date!.toLocal()),
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 13,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    AppBadge(
-                      text: ltr(
-                        '${active.where((item) => item.done).length}'
-                        '/${active.length}',
-                      ),
-                      neutral: true,
-                      icon: Icons.check_rounded,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          ExerciseList(items: groups[key]!),
-          const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-}
-
 /// Program-style list: actionable exercises first, cancelled ones last.
 class ExerciseList extends StatelessWidget {
-  const ExerciseList({super.key, required this.items});
+  const ExerciseList({
+    super.key,
+    required this.items,
+    this.showSession = false,
+    this.sessions,
+  });
   final List<AssignedExercise> items;
+
+  /// Tag each exercise with its owning session (whole-program view).
+  final bool showSession;
+  final List<PatientSession>? sessions;
   @override
   Widget build(BuildContext context) {
     final active = items.where((item) => !item.cancelled).toList();
@@ -303,7 +273,10 @@ class ExerciseList extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: AppEntrance(
         index: index++,
-        child: ExerciseTile(exercise: item),
+        child: ExerciseTile(
+          exercise: item,
+          session: showSession ? sessionOf(item, sessions) : null,
+        ),
       ),
     );
     return Column(
