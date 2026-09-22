@@ -9,6 +9,9 @@ abstract final class AppColors {
   static const info = Color(0xFF3B6FD6);
   static const warning = Color(0xFFB3690A);
   static const warningTint = Color(0xFFFFF3E0);
+
+  /// Brand teal re-stepped to pass the chart chroma floor on light surfaces.
+  static const chart = Color(0xFF1F8A6E);
 }
 
 abstract final class AppSpacing {

@@ -121,6 +121,36 @@ void main() {
     expect(summary.streak, 1);
   });
 
+  test('progress figures exclude skips and use reported time', () {
+    final items = [
+      item('a', execution: {...completedOn(now), 'elapsedSeconds': 120}),
+      item(
+        'b',
+        execution: {
+          ...completedOn(now.subtract(const Duration(days: 3))),
+          'elapsedSeconds': 60,
+          'completionNote': 'شعرت بألم',
+        },
+      ),
+      item('c', execution: {'status': 'SKIPPED', 'skipReasonId': 'r'}),
+      item('d', execution: {'status': 'IN_PROGRESS'}),
+      item('gone', status: 'CANCELLED', execution: completedOn(now)),
+    ];
+    final summary = ProgramSummary.of(items, now);
+    expect(summary.adherence, 0.5);
+    expect(summary.activeTime, const Duration(minutes: 3));
+    expect(summary.skippedCount, 1);
+    expect(summary.inProgressCount, 1);
+    expect(summary.recent.map((e) => e.id), ['a', 'b']);
+    expect(summary.recent.last.completionNote, 'شعرت بألم');
+
+    final daily = ProgramSummary.dailyCompletions(items, now);
+    expect(daily.length, 14);
+    expect(daily.values.last, 1);
+    expect(daily[DateTime(2026, 9, 19)], 1);
+    expect(daily.values.reduce((a, b) => a + b), 2);
+  });
+
   test('all-exercises response keeps the owning session', () {
     final exercise = item(
       'x',

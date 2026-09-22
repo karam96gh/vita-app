@@ -56,6 +56,45 @@ class ProgramSummary {
     return seconds == 0 ? 0 : max(1, (seconds / 60).ceil());
   }
 
+  int get skippedCount => active.where((item) => item.skipped).length;
+  int get inProgressCount => active.where((item) => item.inProgress).length;
+
+  /// Share of the program completed (skips excluded), 0..1.
+  double get adherence => total == 0
+      ? 0
+      : active.where((item) => item.done && !item.skipped).length / total;
+
+  /// Time actually spent on completed exercises, as reported by the server.
+  Duration get activeTime => Duration(
+    seconds: active
+        .where((item) => item.done && !item.skipped)
+        .fold(0, (sum, item) => sum + (item.elapsedSeconds ?? 0)),
+  );
+
+  /// Completed exercises, most recent first.
+  List<AssignedExercise> get recent =>
+      active.where((item) => item.finishedAt != null && !item.skipped).toList()
+        ..sort((a, b) => b.finishedAt!.compareTo(a.finishedAt!));
+
+  /// Completions per local day for the last [days] days, oldest first.
+  static Map<DateTime, int> dailyCompletions(
+    List<AssignedExercise> items,
+    DateTime now, {
+    int days = 14,
+  }) {
+    final today = _day(now);
+    final counts = {
+      for (var offset = days - 1; offset >= 0; offset--)
+        today.subtract(Duration(days: offset)): 0,
+    };
+    for (final item in items) {
+      if (item.cancelled || item.skipped || item.finishedAt == null) continue;
+      final day = _earliest(_day(item.finishedAt!.toLocal()), today);
+      if (counts.containsKey(day)) counts[day] = counts[day]! + 1;
+    }
+    return counts;
+  }
+
   /// Null when the prescription yields an implausible home-session length.
   int? get displayMinutes {
     final minutes = remainingMinutes;

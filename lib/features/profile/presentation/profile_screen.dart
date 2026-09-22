@@ -16,6 +16,7 @@ class ProfileScreen extends ConsumerWidget {
       await ref.read(profileProvider.future);
     },
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppCard(
           child: AsyncContent(
@@ -23,9 +24,17 @@ class ProfileScreen extends ConsumerWidget {
             retry: () => ref.invalidate(profileProvider),
             builder: (profile) => Column(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 36,
-                  child: Icon(Icons.person_outline, size: 40),
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    profile.name.characters.first,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(

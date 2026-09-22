@@ -127,6 +127,7 @@ class AssignedExercise {
     this.startedAt,
     this.elapsedSeconds,
     this.skipReasonId,
+    this.completionNote,
     this.sessionId,
     this.sessionNumber,
   });
@@ -206,6 +207,9 @@ class AssignedExercise {
       skipReasonId: execution == null
           ? null
           : _nullableText(execution, 'skipReasonId'),
+      completionNote: execution == null
+          ? null
+          : _nullableText(execution, 'completionNote'),
       sessionId: _nullableText(data, 'erpSessionId'),
       sessionNumber: sessionNumber as int?,
     );
@@ -245,7 +249,7 @@ class AssignedExercise {
   final String? executionStatus;
   final DateTime? finishedAt, startedAt;
   final int? elapsedSeconds;
-  final String? skipReasonId;
+  final String? skipReasonId, completionNote;
   bool get cancelled => status == 'CANCELLED';
   // Only COMPLETED is observed so far; a recorded skip reason is authoritative.
   bool get skipped => executionStatus == 'SKIPPED' || skipReasonId != null;

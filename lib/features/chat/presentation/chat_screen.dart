@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../app/localization/app_strings.dart';
 import '../../../app/providers.dart';
 import '../../../app/router/route_observer.dart';
@@ -147,19 +148,61 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.t('therapist'))),
+    appBar: AppBar(
+      title: Row(
+        children: [
+          const CircleAvatar(
+            radius: 20,
+            backgroundColor: Color(0xFFE8F5F0),
+            child: Icon(
+              Icons.medical_services_outlined,
+              color: AppColors.success,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.t('therapist'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 12,
+                      color: AppColors.muted,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        context.t('chatPrivacyShort'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
     body: SafeArea(
       top: false,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              context.t('chatPrivacy'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.muted),
-            ),
-          ),
           if (_pollError != null)
             MaterialBanner(
               content: Text(context.strings.error(_pollError!)),
@@ -169,106 +212,230 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
             ),
           Expanded(
             child: _conversation.when(
-              loading: () => const AppLoading(),
+              loading: () => const _ChatSkeleton(),
               error: (e, _) => Center(
                 child: AppErrorState(error: e, retry: _load),
               ),
               data: (conversation) => conversation.messages.isEmpty
                   ? AppEmptyState(
                       title: context.t('emptyChat'),
+                      hint: context.t('chatPrivacy'),
                       icon: Icons.forum_outlined,
                     )
-                  : ListView.builder(
-                      reverse: true,
-                      padding: const EdgeInsets.all(20),
-                      itemCount: conversation.messages.length,
-                      itemBuilder: (context, index) {
-                        final message = conversation
-                            .messages[conversation.messages.length - 1 - index];
-                        return Align(
-                          alignment: message.mine
-                              ? AlignmentDirectional.centerEnd
-                              : AlignmentDirectional.centerStart,
-                          child: Container(
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.sizeOf(context).width * .8,
-                            ),
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: message.mine
-                                  ? AppColors.primary
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  message.text,
-                                  style: TextStyle(
-                                    color: message.mine
-                                        ? Colors.white
-                                        : AppColors.primary,
-                                    height: 1.6,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  AppDates.time(
-                                    message.at,
-                                    Localizations.localeOf(
-                                      context,
-                                    ).languageCode,
-                                  ),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: message.mine
-                                        ? Colors.white70
-                                        : AppColors.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  : _MessageList(messages: conversation.messages),
             ),
           ),
           if (_conversation.hasValue)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _text,
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText: context.t('message'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton.filled(
-                    tooltip: context.t('send'),
-                    onPressed: _sending ? null : _send,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded),
-                  ),
-                ],
-              ),
-            ),
+            _Composer(controller: _text, sending: _sending, onSend: _send),
         ],
       ),
     ),
+  );
+}
+
+class _MessageList extends StatelessWidget {
+  const _MessageList({required this.messages});
+  final List<ChatMessage> messages;
+  @override
+  Widget build(BuildContext context) {
+    final language = Localizations.localeOf(context).languageCode;
+    final ordered = [...messages]..sort((a, b) => a.at.compareTo(b.at));
+    final rows = <Widget>[];
+    DateTime? day;
+    for (final message in ordered) {
+      final local = message.at.toLocal();
+      final current = DateTime(local.year, local.month, local.day);
+      if (current != day) {
+        day = current;
+        rows.add(_DayChip(DateFormat.MMMMEEEEd(language).format(current)));
+      }
+      rows.add(_Bubble(message: message));
+    }
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      itemCount: rows.length,
+      itemBuilder: (_, index) => rows[rows.length - 1 - index],
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip(this.label);
+  final String label;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Container(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9ECF3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+    ),
+  );
+}
+
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.message});
+  final ChatMessage message;
+  @override
+  Widget build(BuildContext context) {
+    final mine = message.mine;
+    return Align(
+      alignment: mine
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .78,
+        ),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+        decoration: BoxDecoration(
+          color: mine ? AppColors.primary : Colors.white,
+          boxShadow: mine ? null : AppShadows.soft,
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(18),
+            topEnd: const Radius.circular(18),
+            bottomStart: Radius.circular(mine ? 18 : 4),
+            bottomEnd: Radius.circular(mine ? 4 : 18),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              message.text,
+              style: TextStyle(
+                color: mine ? Colors.white : AppColors.primary,
+                height: 1.55,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              AppDates.time(
+                message.at,
+                Localizations.localeOf(context).languageCode,
+              ),
+              style: TextStyle(
+                fontSize: 11,
+                color: mine ? Colors.white70 : AppColors.muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  const _Composer({
+    required this.controller,
+    required this.sending,
+    required this.onSend,
+  });
+  final TextEditingController controller;
+  final bool sending;
+  final VoidCallback onSend;
+  @override
+  Widget build(BuildContext context) {
+    final pill = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: BorderSide.none,
+    );
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0F1D2452),
+            blurRadius: 16,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: context.t('message'),
+                  filled: true,
+                  fillColor: AppColors.canvas,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  border: pill,
+                  enabledBorder: pill,
+                  focusedBorder: pill.copyWith(
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.success,
+                minimumSize: const Size(48, 48),
+              ),
+              tooltip: context.t('send'),
+              onPressed: sending ? null : onSend,
+              icon: sending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatSkeleton extends StatelessWidget {
+  const _ChatSkeleton();
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      for (final (end, width) in [
+        (false, 220.0),
+        (true, 160.0),
+        (false, 250.0),
+        (true, 190.0),
+        (false, 140.0),
+      ])
+        Align(
+          alignment: end
+              ? AlignmentDirectional.centerEnd
+              : AlignmentDirectional.centerStart,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AppSkeleton(height: 44, width: width, radius: 18),
+          ),
+        ),
+    ],
   );
 }
