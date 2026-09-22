@@ -84,7 +84,7 @@ class _TodayCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   '${ltr('${summary.doneToday}')} ${context.t('ofWord')} '
-                  '${ltr('${summary.total}')} ${context.t('exercisesCount')}',
+                  '${exerciseCount(context, summary.total, genitive: true)}',
                   style: const TextStyle(color: Color(0xFFD6DAEF)),
                 ),
               ],
@@ -184,6 +184,16 @@ class _DailyChart extends StatefulWidget {
 class _DailyChartState extends State<_DailyChart> {
   static const _plotHeight = 120.0;
   late DateTime _selected = widget.counts.keys.last;
+
+  @override
+  void didUpdateWidget(_DailyChart old) {
+    super.didUpdateWidget(old);
+    // Server days replace the local estimate; follow the new "today".
+    if (old.counts.keys.last != widget.counts.keys.last ||
+        !widget.counts.containsKey(_selected)) {
+      _selected = widget.counts.keys.last;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -11,6 +11,20 @@ import '../../patient/domain/models.dart';
 String ltr(String value) =>
     '${String.fromCharCode(0x2066)}$value${String.fromCharCode(0x2069)}';
 
+/// "N exercises" with Arabic number agreement:
+/// تمرين واحد، تمرينان (تمرينين after "من")، 3 تمارين، 11 تمريناً.
+String exerciseCount(BuildContext context, int n, {bool genitive = false}) {
+  if (!context.strings.ar) {
+    return '${ltr('$n')} ${n == 1 ? 'exercise' : 'exercises'}';
+  }
+  return switch (n) {
+    1 => 'تمرين واحد',
+    2 => genitive ? 'تمرينين' : 'تمرينان',
+    >= 3 && <= 10 => '${ltr('$n')} تمارين',
+    _ => '${ltr('$n')} تمريناً',
+  };
+}
+
 String clock(int seconds) =>
     '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 

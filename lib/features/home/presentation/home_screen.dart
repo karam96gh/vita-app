@@ -147,8 +147,7 @@ class _ProgramCard extends ConsumerWidget {
       final subtitle = summary.complete
           ? context.t('programDoneHint')
           : [
-              '${ltr('${summary.total - summary.finished}')} '
-                  '${context.t('exercisesCount')}',
+              exerciseCount(context, summary.total - summary.finished),
               if (minutes != null)
                 '${context.t('aboutMinutes')} ${ltr('$minutes')} '
                     '${context.t('minutes')}',

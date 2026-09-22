@@ -126,7 +126,6 @@ class AppStrings {
     'goodMorning': ['صباح الخير', 'Good morning'],
     'goodEvening': ['مساء الخير', 'Good evening'],
     'todayProgram': ['برنامج اليوم', "Today's program"],
-    'exercisesCount': ['تمارين', 'exercises'],
     'aboutMinutes': ['حوالي', 'about'],
     'minutes': ['دقيقة', 'min'],
     'startExercises': ['ابدأ التمارين', 'Start exercises'],
