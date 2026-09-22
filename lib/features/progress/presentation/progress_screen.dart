@@ -253,7 +253,7 @@ class _DailyChartState extends State<_DailyChart> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              DateFormat.EEEEE(language).format(entry.key),
+                              DateFormat.d(language).format(entry.key),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: entry.key == _selected

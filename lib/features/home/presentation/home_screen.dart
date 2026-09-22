@@ -267,10 +267,15 @@ class _WeekCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               for (final entry in summary.week.entries)
-                _Day(
-                  label: DateFormat.EEEEE(language).format(entry.key),
-                  done: entry.value,
-                  today: entry.key == today,
+                Expanded(
+                  child: _Day(
+                    label: entry.key == today
+                        ? context.t('today')
+                        : DateFormat.EEEE(language).format(entry.key),
+                    date: DateFormat.d(language).format(entry.key),
+                    done: entry.value,
+                    today: entry.key == today,
+                  ),
                 ),
             ],
           ),
@@ -292,35 +297,59 @@ String _streakLabel(BuildContext context, int days) {
 }
 
 class _Day extends StatelessWidget {
-  const _Day({required this.label, required this.done, required this.today});
-  final String label;
+  const _Day({
+    required this.label,
+    required this.date,
+    required this.done,
+    required this.today,
+  });
+  final String label, date;
   final bool done, today;
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(
-        label,
-        style: TextStyle(
-          color: today ? AppColors.primary : AppColors.muted,
-          fontWeight: today ? FontWeight.w800 : FontWeight.w500,
+  Widget build(BuildContext context) => Semantics(
+    label: '$label $date',
+    child: Column(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: done
+                ? AppColors.success
+                : today
+                ? Colors.white
+                : AppColors.canvas,
+            border: today && !done
+                ? Border.all(color: AppColors.accent, width: 2)
+                : null,
+          ),
+          child: done
+              ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+              : Text(
+                  date,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: today ? AppColors.primary : AppColors.muted,
+                  ),
+                ),
         ),
-      ),
-      const SizedBox(height: 8),
-      Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: done ? AppColors.success : AppColors.canvas,
-          border: today && !done
-              ? Border.all(color: AppColors.accent, width: 2)
-              : null,
+        const SizedBox(height: 6),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 11,
+              color: today ? AppColors.primary : AppColors.muted,
+              fontWeight: today ? FontWeight.w800 : FontWeight.w500,
+            ),
+          ),
         ),
-        child: done
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-            : null,
-      ),
-    ],
+      ],
+    ),
   );
 }
 
