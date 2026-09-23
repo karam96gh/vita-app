@@ -352,34 +352,6 @@ class SkipReason {
   }
 }
 
-class ProgressSummary {
-  const ProgressSummary(
-    this.active,
-    this.completed,
-    this.skipped,
-    this.running,
-  );
-  final int active, completed, skipped, running;
-
-  factory ProgressSummary.fromJson(Object? value) {
-    final data = _object(value);
-    int count(String key) {
-      final value = data[key];
-      if (value is! int || value < 0) {
-        throw const ApiFailure('INVALID_RESPONSE');
-      }
-      return value;
-    }
-
-    return ProgressSummary(
-      count('totalActiveAssignments'),
-      count('completed'),
-      count('skipped'),
-      count('inProgress'),
-    );
-  }
-}
-
 /// One day of completions from /me/progress/daily (clinic calendar date).
 class DailyCompletion {
   const DailyCompletion(this.date, this.completed);

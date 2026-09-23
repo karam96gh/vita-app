@@ -86,11 +86,6 @@ class PatientRepository {
     );
   }
 
-  Future<ProgressSummary> progress() async {
-    final data = await api.get('/me/progress');
-    return ProgressSummary.fromJson(data);
-  }
-
   ChatMessage _message(Object? item) => ChatMessage.fromJson(item);
 
   /// Observed: {conversation: {id, erpPatientId, erpTherapistId, active, …},

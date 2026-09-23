@@ -99,9 +99,6 @@ final profileProvider = FutureProvider.autoDispose<PatientProfile>(
 final sessionsProvider = FutureProvider.autoDispose<List<PatientSession>>(
   (ref) => ref.watch(repositoryProvider).sessions(),
 );
-final progressProvider = FutureProvider.autoDispose<ProgressSummary>(
-  (ref) => ref.watch(repositoryProvider).progress(),
-);
 final exercisesProvider = FutureProvider.autoDispose
     .family<List<AssignedExercise>, String>(
       (ref, session) => ref.watch(repositoryProvider).exercises(session),

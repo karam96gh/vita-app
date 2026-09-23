@@ -264,8 +264,7 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
   void _refreshData() {
     ref
       ..invalidate(programProvider)
-      ..invalidate(dailyProvider)
-      ..invalidate(progressProvider);
+      ..invalidate(dailyProvider);
     if (widget.sessionId != null) {
       ref.invalidate(exercisesProvider(widget.sessionId!));
     }
@@ -440,7 +439,7 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
             exercise.inProgress ? 'continueExercise' : 'startThisExercise',
           ),
           icon: Icons.play_arrow_rounded,
-          color: AppColors.success,
+          color: AppColors.accent,
           busy: _busy,
           onPressed: _start,
         ),

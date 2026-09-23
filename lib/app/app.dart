@@ -206,7 +206,8 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
     if (ref.read(authProvider) == AuthStatus.signedIn) {
       ref.invalidate(appointmentsProvider);
       ref.invalidate(sessionsProvider);
-      ref.invalidate(progressProvider);
+      ref.invalidate(programProvider);
+      ref.invalidate(dailyProvider);
       _notifications.setAuthenticated(true);
     }
   }

@@ -110,12 +110,6 @@ void main() {
             'idNumber': 'not used in profile',
           },
         },
-        '/me/progress': {
-          'totalActiveAssignments': 7,
-          'completed': 3,
-          'skipped': 1,
-          'inProgress': 2,
-        },
         '/me/notifications': [
           notification('older', '2026-09-14T10:00:00Z'),
           notification(
@@ -138,16 +132,6 @@ void main() {
       final profile = await repository.profile();
       expect(profile.name, 'Test Patient');
       expect(profile.phone, isNull);
-      final progress = await repository.progress();
-      expect(
-        [
-          progress.active,
-          progress.completed,
-          progress.skipped,
-          progress.running,
-        ],
-        [7, 3, 1, 2],
-      );
       final notifications = await repository.notifications();
       expect(notifications.map((item) => item.id), ['newer', 'older']);
       expect(notifications.first.read, isTrue);
@@ -168,17 +152,6 @@ void main() {
       },
     ]) {
       expect(() => PatientProfile.fromJson(value), malformed);
-    }
-    for (final invalid in [null, -1, '3', 1.5]) {
-      expect(
-        () => ProgressSummary.fromJson({
-          'totalActiveAssignments': invalid,
-          'completed': 0,
-          'skipped': 0,
-          'inProgress': 0,
-        }),
-        malformed,
-      );
     }
   });
 
