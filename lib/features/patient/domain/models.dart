@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' show max;
 import '../../../core/errors/api_failure.dart';
 import '../../../core/network/patient_contract.dart';
@@ -55,19 +56,29 @@ class PatientSession {
     this.number,
     this.date,
     this.attendanceConfirmed,
-    this.alreadyRated,
-  );
+    this.rated, {
+    this.ratingId,
+  });
   final String id;
   final int number;
   final DateTime date;
   final bool attendanceConfirmed;
-  final bool? alreadyRated;
+  final bool rated;
+  final String? ratingId;
+
+  bool get alreadyRated => rated;
 
   factory PatientSession.fromJson(Object? value) {
     final data = _object(value);
     final number = data['sessionNumber'];
     final attendance = data['attendanceConfirmed'];
-    if (number is! int || number < 0 || attendance is! bool) {
+    final rated = data['rated'];
+    final ratingId = data['ratingId'];
+    if (number is! int ||
+        number < 0 ||
+        attendance is! bool ||
+        rated is! bool ||
+        (ratingId != null && ratingId is! String)) {
       throw const ApiFailure('INVALID_RESPONSE');
     }
     return PatientSession(
@@ -75,8 +86,8 @@ class PatientSession {
       number,
       _date(_text(data, 'sessionDate')),
       attendance,
-      // The session list does not expose rating history.
-      null,
+      rated,
+      ratingId: ratingId as String?,
     );
   }
 }
@@ -89,6 +100,7 @@ class AssignedExercise {
         status: c.text(json, 'exercise.assignmentStatus'),
         instructions: c.optionalText(json, 'exercise.instructions'),
         mediaUrl: c.optionalText(json, 'exercise.mediaUrl'),
+        thumbnailUrl: c.optionalText(json, 'exercise.thumbnailUrl'),
         mediaType: c.optionalText(json, 'exercise.mediaType'),
         canStart: c.flag(json, 'exercise.canStart'),
         canComplete: c.flag(json, 'exercise.canComplete'),
@@ -100,6 +112,7 @@ class AssignedExercise {
     required this.status,
     this.instructions,
     this.mediaUrl,
+    this.thumbnailUrl,
     this.mediaType,
     this.nameEn,
     this.instructionsEn,
@@ -192,6 +205,7 @@ class AssignedExercise {
       frequency: _nullableText(data, 'frequencyTextAr'),
       frequencyEn: _nullableText(data, 'frequencyTextEn'),
       mediaUrl: _nullableText(exercise, 'mediaUrl'),
+      thumbnailUrl: _nullableText(exercise, 'thumbnailUrl'),
       mediaType: _nullableText(exercise, 'mediaType'),
       sortOrder: count('sortOrder') ?? 0,
       durationSeconds: count('durationSeconds'),
@@ -219,7 +233,7 @@ class AssignedExercise {
       sessionNumber: sessionNumber as int?,
       timesPerDay: count('timesPerDay'),
       daysPerWeek: count('daysPerWeek'),
-      // Only /me/exercises carries it (computed in the clinic's timezone).
+      // Both exercise-list endpoints carry this clinic-timezone counter.
       todayCompletedCount: count('todayCompletedCount'),
       lastActivityAt: stamp('updatedAt') ?? stamp('completedAt'),
     );
@@ -278,7 +292,7 @@ class AssignedExercise {
   }
 
   final String id, name, status;
-  final String? instructions, mediaUrl, mediaType;
+  final String? instructions, mediaUrl, thumbnailUrl, mediaType;
 
   /// Explicit server permissions; null means "derive from execution state".
   final bool? canStart, canComplete, canSkip;
@@ -403,9 +417,45 @@ class ChatMessage {
 }
 
 class Conversation {
-  const Conversation(this.id, this.messages);
+  const Conversation(this.id, this.messages, this.unreadCount);
   final String id;
   final List<ChatMessage> messages;
+  final int unreadCount;
+}
+
+class NotificationLink {
+  const NotificationLink(this.type, this.id);
+  final String type;
+  final String? id;
+
+  String get location => switch (type) {
+    'EXERCISE' =>
+      id == null ? '/program' : '/program/${Uri.encodeComponent(id!)}',
+    'APPOINTMENT' => '/appointments',
+    'MESSAGE' => '/chat',
+    _ => '/notifications',
+  };
+
+  static NotificationLink? from(Object? value) {
+    if (value == null) return null;
+    Object? decoded = value;
+    if (value is String) {
+      try {
+        decoded = jsonDecode(value);
+      } on FormatException {
+        throw const ApiFailure('INVALID_RESPONSE');
+      }
+    }
+    if (decoded is! Map) throw const ApiFailure('INVALID_RESPONSE');
+    final type = decoded['type'];
+    final id = decoded['id'];
+    if (type is! String ||
+        !const {'EXERCISE', 'APPOINTMENT', 'MESSAGE'}.contains(type) ||
+        (id != null && id is! String)) {
+      throw const ApiFailure('INVALID_RESPONSE');
+    }
+    return NotificationLink(type, id as String?);
+  }
 }
 
 class PatientNotification {
@@ -417,11 +467,13 @@ class PatientNotification {
     this.at, {
     this.titleEn,
     this.bodyEn,
+    this.link,
   });
   final String id, title, body;
   final String? titleEn, bodyEn;
   final bool read;
   final DateTime at;
+  final NotificationLink? link;
 
   String localizedTitle(String language) =>
       language == 'en' && titleEn?.trim().isNotEmpty == true ? titleEn! : title;
@@ -443,6 +495,7 @@ class PatientNotification {
       sentAt,
       titleEn: _nullableText(data, 'titleEn'),
       bodyEn: _nullableText(data, 'bodyEn'),
+      link: NotificationLink.from(data['payloadJson'] ?? data['data']),
     );
   }
 }

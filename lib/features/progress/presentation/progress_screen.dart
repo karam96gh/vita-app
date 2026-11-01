@@ -120,55 +120,25 @@ class _StatRow extends StatelessWidget {
       ),
       ('running', ltr('${summary.inProgressCount}'), Icons.timelapse_rounded),
     ];
-    return Row(
-      children: [
-        for (final (index, stat) in stats.indexed)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(
-                start: index == 0 ? 0 : 5,
-                end: index == stats.length - 1 ? 0 : 5,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(13) / 13;
+        final columns = constraints.maxWidth >= 600 * textScale ? 4 : 2;
+        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final stat in stats)
+              StatChip(
+                width: width,
+                icon: stat.$3,
+                value: stat.$2,
+                label: context.t(stat.$1),
               ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: AppShadows.soft,
-                ),
-                child: Column(
-                  children: [
-                    Icon(stat.$3, color: AppColors.muted, size: 20),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      child: Text(
-                        stat.$2,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      context.t(stat.$1),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -221,68 +191,94 @@ class _DailyChartState extends State<_DailyChart> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: _plotHeight + 24,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (final entry in entries)
-                  Expanded(
-                    child: Semantics(
-                      button: true,
-                      selected: entry.key == _selected,
-                      label:
-                          '${DateFormat.MMMMEEEEd(language).format(entry.key)}: '
-                          '${entry.value}',
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => setState(() => _selected = entry.key),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Padding(
-                              // 2px surface gap between adjacent bars.
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 1,
-                              ),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                height: entry.value == 0
-                                    ? 3
-                                    : _plotHeight * entry.value / peak,
-                                constraints: const BoxConstraints(maxWidth: 14),
-                                decoration: BoxDecoration(
-                                  color: entry.value == 0
-                                      ? const Color(0xFFE3E6EF)
-                                      : AppColors.chart.withValues(
-                                          alpha: entry.key == _selected
-                                              ? 1
-                                              : .55,
+            height:
+                _plotHeight +
+                10 +
+                MediaQuery.textScalerOf(context).scale(12) * 1.5,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final minWidth =
+                    entries.length *
+                    28.0 *
+                    (MediaQuery.textScalerOf(context).scale(12) / 12);
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: constraints.maxWidth > minWidth
+                        ? constraints.maxWidth
+                        : minWidth,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (final entry in entries)
+                          Expanded(
+                            child: Semantics(
+                              button: true,
+                              selected: entry.key == _selected,
+                              label:
+                                  '${DateFormat.MMMMEEEEd(language).format(entry.key)}: '
+                                  '${entry.value}',
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () =>
+                                    setState(() => _selected = entry.key),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Padding(
+                                      // 2px surface gap between adjacent bars.
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 1,
+                                      ),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 250,
                                         ),
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(4),
-                                  ),
+                                        height: entry.value == 0
+                                            ? 3
+                                            : _plotHeight * entry.value / peak,
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: entry.value == 0
+                                              ? const Color(0xFFE3E6EF)
+                                              : AppColors.chart.withValues(
+                                                  alpha: entry.key == _selected
+                                                      ? 1
+                                                      : .55,
+                                                ),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(4),
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      DateFormat.d(language).format(entry.key),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.5,
+                                        color: entry.key == _selected
+                                            ? AppColors.primary
+                                            : AppColors.muted,
+                                        fontWeight: entry.key == _selected
+                                            ? FontWeight.w800
+                                            : FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              DateFormat.d(language).format(entry.key),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: entry.key == _selected
-                                    ? AppColors.primary
-                                    : AppColors.muted,
-                                fontWeight: entry.key == _selected
-                                    ? FontWeight.w800
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                      ],
                     ),
                   ),
-              ],
+                );
+              },
             ),
           ),
         ],

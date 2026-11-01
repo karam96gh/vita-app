@@ -37,7 +37,7 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
   late final ProviderSubscription<AuthStatus> _authListener;
   final _routerRefresh = ValueNotifier<int>(0);
   Timer? _refreshTimer;
-  bool _pendingNotification = false;
+  String? _pendingNotificationLocation;
 
   @override
   void initState() {
@@ -45,16 +45,21 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _notifications = NotificationService(
       repository: () => ref.read(repositoryProvider),
-      onOpen: () {
+      onOpen: (link) {
         if (!mounted) return;
+        final location = link?.location ?? '/notifications';
         if (ref.read(authProvider) == AuthStatus.signedIn) {
-          _router.push('/notifications');
+          _router.push(location);
         } else {
-          _pendingNotification = true;
+          _pendingNotificationLocation = location;
         }
       },
       onForeground: () {
-        if (mounted) ref.invalidate(notificationsProvider);
+        if (!mounted) return;
+        ref.invalidate(notificationsProvider);
+        ref.invalidate(conversationProvider);
+        ref.invalidate(appointmentsProvider);
+        ref.invalidate(programProvider);
       },
     );
     _router = GoRouter(
@@ -124,6 +129,7 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
           builder: (_, state) => ExercisePlayerScreen(
             startId: state.uri.queryParameters['start'],
             sessionId: state.uri.queryParameters['session'],
+            autoStart: state.uri.queryParameters['auto'] == '1',
           ),
         ),
         GoRoute(
@@ -153,10 +159,11 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
       _routerRefresh.value++;
       _notifications.setAuthenticated(next == AuthStatus.signedIn);
       _scheduleRefresh();
-      if (next == AuthStatus.signedIn && _pendingNotification) {
-        _pendingNotification = false;
+      if (next == AuthStatus.signedIn && _pendingNotificationLocation != null) {
+        final location = _pendingNotificationLocation!;
+        _pendingNotificationLocation = null;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _router.push('/notifications');
+          if (mounted) _router.push(location);
         });
       }
     });
@@ -208,6 +215,7 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
       ref.invalidate(sessionsProvider);
       ref.invalidate(programProvider);
       ref.invalidate(dailyProvider);
+      ref.invalidate(conversationProvider);
       _notifications.setAuthenticated(true);
     }
   }
@@ -240,7 +248,7 @@ class _VitaAppState extends ConsumerState<VitaApp> with WidgetsBindingObserver {
   );
 }
 
-class _MainNavigation extends StatelessWidget {
+class _MainNavigation extends ConsumerWidget {
   const _MainNavigation({required this.index, required this.child});
   final int index;
   final Widget child;
@@ -256,19 +264,34 @@ class _MainNavigation extends StatelessWidget {
     ('/chat', 'messages', Icons.forum_outlined, Icons.forum_rounded),
   ];
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: child,
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: index,
-      onDestinationSelected: (value) => context.go(_tabs[value].$1),
-      destinations: [
-        for (final tab in _tabs)
-          NavigationDestination(
-            icon: Icon(tab.$3),
-            selectedIcon: Icon(tab.$4),
-            label: context.t(tab.$2),
-          ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(chatUnreadCountProvider);
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (value) => context.go(_tabs[value].$1),
+        destinations: [
+          for (final (tabIndex, tab) in _tabs.indexed)
+            NavigationDestination(
+              icon: tabIndex == 3
+                  ? Badge.count(
+                      count: unread,
+                      isLabelVisible: unread > 0,
+                      child: Icon(tab.$3),
+                    )
+                  : Icon(tab.$3),
+              selectedIcon: tabIndex == 3
+                  ? Badge.count(
+                      count: unread,
+                      isLabelVisible: unread > 0,
+                      child: Icon(tab.$4),
+                    )
+                  : Icon(tab.$4),
+              label: context.t(tab.$2),
+            ),
+        ],
+      ),
+    );
+  }
 }

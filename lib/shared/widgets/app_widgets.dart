@@ -14,6 +14,7 @@ class AppCard extends StatelessWidget {
     decoration: BoxDecoration(
       color: color ?? Colors.white,
       borderRadius: BorderRadius.circular(AppRadius.card),
+      border: Border.all(color: AppColors.primary.withValues(alpha: .06)),
       boxShadow: AppShadows.soft,
     ),
     child: child,
@@ -38,7 +39,12 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton(
     style: color == null
         ? null
-        : FilledButton.styleFrom(backgroundColor: color),
+        : FilledButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: color == AppColors.accent
+                ? AppColors.primary
+                : Colors.white,
+          ),
     onPressed: busy ? null : onPressed,
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -76,7 +82,20 @@ class _AppSkeletonState extends State<AppSkeleton>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+    value: .5,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Hold a steady placeholder when the system asks for reduced motion.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse.stop();
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
   @override
   void dispose() {
     _pulse.dispose();
@@ -148,11 +167,12 @@ class AppProgressRing extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFD6DAEF), fontSize: 11),
-            ),
+            if (label.isNotEmpty)
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFD6DAEF), fontSize: 12),
+              ),
           ],
         ),
       ],
@@ -166,35 +186,44 @@ class StatChip extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
-    this.color = AppColors.success,
+    this.color = AppColors.primary,
+    this.width,
   });
   final IconData icon;
   final String value, label;
   final Color color;
+  final double? width;
   @override
   Widget build(BuildContext context) => Container(
-    width: 78,
-    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+    width: width,
+    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
     decoration: BoxDecoration(
-      color: AppColors.canvas,
-      borderRadius: BorderRadius.circular(14),
+      color: color.withValues(alpha: .045),
+      border: Border.all(color: color.withValues(alpha: .08)),
+      borderRadius: BorderRadius.circular(16),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 6),
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: color,
+          ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: AppColors.muted, fontSize: 11),
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 13,
+            height: 1.5,
+          ),
         ),
       ],
     ),
@@ -263,9 +292,16 @@ class _AppEntranceState extends State<AppEntrance>
     duration: const Duration(milliseconds: 320),
   );
   Timer? _delay;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_enter.isCompleted || _enter.isAnimating || _delay != null) return;
+    // Show content immediately when the system asks for reduced motion.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _enter.value = 1;
+      return;
+    }
     _delay = Timer(
       Duration(milliseconds: 45 * widget.index.clamp(0, 6)),
       () => mounted ? _enter.forward() : null,

@@ -43,6 +43,23 @@ class AppointmentsScreen extends ConsumerWidget {
   );
 }
 
+/// "Today" / "Tomorrow" ahead of the full date, so the nearest visits stand out.
+String _relativeDay(BuildContext context, DateTime utc, String locale) {
+  final local = utc.toLocal();
+  final now = DateTime.now();
+  final days = DateTime(
+    local.year,
+    local.month,
+    local.day,
+  ).difference(DateTime(now.year, now.month, now.day)).inDays;
+  final full = AppDates.day(utc, locale);
+  return switch (days) {
+    0 => '${context.t('today')} · $full',
+    1 => '${context.t('tomorrow')} · $full',
+    _ => full,
+  };
+}
+
 class AppointmentCard extends StatelessWidget {
   const AppointmentCard({super.key, required this.appointment});
   final Appointment appointment;
@@ -63,7 +80,7 @@ class AppointmentCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   context.t(
-                    appointment.type == 'SESSION' ? 'session' : 'appointments',
+                    appointment.type == 'SESSION' ? 'session' : 'appointment',
                   ),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
@@ -72,7 +89,7 @@ class AppointmentCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            AppDates.day(appointment.start, locale),
+            _relativeDay(context, appointment.start, locale),
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),

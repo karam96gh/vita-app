@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/localization/app_strings.dart';
 import '../../../app/providers.dart';
 import '../../../app/config/app_config.dart';
@@ -37,16 +38,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     }
   }
 
-  Future<void> _markRead(PatientNotification notification) async {
-    if (notification.read || _busy.contains(notification.id)) return;
-    setState(() => _busy.add(notification.id));
-    try {
-      await ref.read(repositoryProvider).readNotification(notification.id);
-      ref.invalidate(notificationsProvider);
-    } on Object catch (error) {
-      if (mounted) showFailure(context, error);
-    } finally {
-      if (mounted) setState(() => _busy.remove(notification.id));
+  Future<void> _open(PatientNotification notification) async {
+    if (_busy.contains(notification.id)) return;
+    if (!notification.read) {
+      setState(() => _busy.add(notification.id));
+      try {
+        await ref.read(repositoryProvider).readNotification(notification.id);
+        ref.invalidate(notificationsProvider);
+      } on Object catch (error) {
+        if (mounted) showFailure(context, error);
+        return;
+      } finally {
+        if (mounted) setState(() => _busy.remove(notification.id));
+      }
+    }
+    if (mounted && notification.link != null) {
+      context.push(notification.link!.location);
     }
   }
 
@@ -89,7 +96,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           child: _NotificationTile(
                             notification: notification,
                             busy: _busy.contains(notification.id),
-                            onTap: () => _markRead(notification),
+                            onTap: () => _open(notification),
                           ),
                         ),
                       ),
@@ -121,7 +128,7 @@ class _NotificationTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: unread && !busy ? onTap : null,
+          onTap: !busy && (unread || notification.link != null) ? onTap : null,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(

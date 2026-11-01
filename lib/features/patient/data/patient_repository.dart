@@ -96,14 +96,20 @@ class PatientRepository {
         ? data['conversation']
         : null;
     final messages = data is Map<String, dynamic> ? data['messages'] : null;
+    final unreadCount = data is Map<String, dynamic>
+        ? data['unreadCount']
+        : null;
     if (conversation is! Map<String, dynamic> ||
         conversation['id'] is! String ||
-        messages is! List) {
+        messages is! List ||
+        unreadCount is! int ||
+        unreadCount < 0) {
       throw const ApiFailure('INVALID_RESPONSE');
     }
     return Conversation(
       conversation['id'] as String,
       messages.map(_message).toList(),
+      unreadCount,
     );
   }
 

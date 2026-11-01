@@ -16,6 +16,7 @@ Map<String, dynamic> notification(String id, String sentAt, {String? readAt}) =>
       'bodyEn': 'Test appointment',
       'sentAt': sentAt,
       'readAt': readAt,
+      'payloadJson': {'type': 'APPOINTMENT', 'id': 'appointment-1'},
     };
 
 void main() {
@@ -42,6 +43,8 @@ void main() {
                     'sessionNumber': 1,
                     'sessionDate': '2001-09-03T00:00:00.000Z',
                     'attendanceConfirmed': false,
+                    'rated': false,
+                    'ratingId': null,
                     'physiotherapistId': null,
                     'appointmentId': null,
                   },
@@ -61,7 +64,8 @@ void main() {
       expect(sessions.single.number, 1);
       expect(sessions.single.date, DateTime.utc(2001, 9, 3));
       expect(sessions.single.attendanceConfirmed, isFalse);
-      expect(sessions.single.alreadyRated, isNull);
+      expect(sessions.single.rated, isFalse);
+      expect(sessions.single.ratingId, isNull);
       expect(await repository.exercises(sessions.single.id), isEmpty);
       expect(paths, ['/me/sessions', '/me/sessions/$id/exercises']);
     },
@@ -118,6 +122,11 @@ void main() {
             readAt: '2026-09-15T11:00:00Z',
           ),
         ],
+        '/me/chat': {
+          'conversation': {'id': 'conversation-1'},
+          'messages': <Object>[],
+          'unreadCount': 3,
+        },
       };
       final dio = Dio();
       dio.httpClientAdapter = TestAdapter((request) async {
@@ -139,6 +148,10 @@ void main() {
       expect(notifications.first.localizedTitle('en'), 'Reminder');
       expect(notifications.first.localizedTitle('ar'), 'تذكير');
       expect(notifications.first.localizedBody('en'), 'Test appointment');
+      expect(notifications.first.link?.location, '/appointments');
+      final conversation = await repository.conversation();
+      expect(conversation.id, 'conversation-1');
+      expect(conversation.unreadCount, 3);
     },
   );
 
@@ -179,6 +192,11 @@ void main() {
       'titleEn': null,
       'bodyEn': '',
     });
+    final message = PatientNotification.fromJson({
+      ...unread,
+      'payloadJson': '{"type":"MESSAGE","id":"conversation-1"}',
+    });
+    expect(message.link?.location, '/chat');
     expect(fallback.localizedTitle('en'), 'تذكير');
     expect(fallback.localizedBody('en'), 'موعد تجريبي');
   });

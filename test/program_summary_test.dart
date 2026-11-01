@@ -78,14 +78,19 @@ void main() {
     expect(summary.week.keys.last, DateTime(2026, 9, 22));
   });
 
-  test('time estimate follows reps, holds, sets and rests', () {
-    // Fixture: 3 sets × 10 reps, hold 5s, rest 20s → 3·50 + 2·20.
-    expect(ProgramSummary.estimateSeconds(item('reps')), 190);
+  test('time estimate matches server and excludes rests', () {
+    // Fixture: 3 sets × 10 reps × 5s hold. Rest is excluded.
+    expect(ProgramSummary.estimateSeconds(item('reps')), 150);
     final timed = item('timed', extra: {'reps': null, 'sets': 2});
-    // 2 sets × 60s duration + 1 rest of 20s.
-    expect(ProgramSummary.estimateSeconds(timed), 140);
-    expect(ProgramSummary.of([item('reps'), timed], now).remainingMinutes, 6);
-    expect(ProgramSummary.of([item('reps'), timed], now).displayMinutes, 6);
+    // Duration is per set: 2 sets × 60s.
+    expect(ProgramSummary.estimateSeconds(timed), 120);
+    final plainReps = item(
+      'plain-reps',
+      extra: {'sets': null, 'reps': 10, 'holdSeconds': null},
+    );
+    expect(ProgramSummary.estimateSeconds(plainReps), 20);
+    expect(ProgramSummary.of([item('reps'), timed], now).remainingMinutes, 5);
+    expect(ProgramSummary.of([item('reps'), timed], now).displayMinutes, 5);
     // Seed-style prescriptions (100 × 99) must not surface as "5000 minutes".
     final absurd = item('absurd', extra: {'sets': 100, 'reps': 99});
     expect(ProgramSummary.of([absurd], now).displayMinutes, isNull);

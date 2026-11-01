@@ -16,8 +16,14 @@ import 'media_view.dart';
 
 /// Guided flow: intro → timed sets and rests → feedback → next exercise.
 class ExercisePlayerScreen extends ConsumerStatefulWidget {
-  const ExercisePlayerScreen({super.key, this.sessionId, this.startId});
+  const ExercisePlayerScreen({
+    super.key,
+    this.sessionId,
+    this.startId,
+    this.autoStart = false,
+  });
   final String? sessionId, startId;
+  final bool autoStart;
   @override
   ConsumerState<ExercisePlayerScreen> createState() => _PlayerState();
 }
@@ -145,6 +151,7 @@ class _PlayerState extends ConsumerState<ExercisePlayerScreen> {
                         child: _ExerciseRunView(
                           key: ValueKey(queue[_index].id),
                           exercise: queue[_index],
+                          autoStart: widget.autoStart && _index == 0,
                           sessionId: widget.sessionId,
                           upNext: _index + 1 < queue.length
                               ? queue[_index + 1]
@@ -218,10 +225,12 @@ class _ExerciseRunView extends ConsumerStatefulWidget {
     required this.onRunning,
     required this.onActiveTime,
     required this.onPain,
+    this.autoStart = false,
     this.sessionId,
     this.upNext,
   });
   final AssignedExercise exercise;
+  final bool autoStart;
   final String? sessionId;
   final AssignedExercise? upNext;
   final ValueChanged<bool> onFinished, onRunning;
@@ -244,6 +253,16 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
   DateTime? _startedAt;
   bool _busy = false, _showVideo = false;
   String? _feeling;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _start();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -281,16 +300,23 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
 
   Future<void> _start() async {
     if (_busy) return;
+    widget.onRunning(true);
     // An interrupted execution is resumed without a second server start.
     if (!_current.inProgress) {
       setState(() => _busy = true);
       try {
         await ref.read(repositoryProvider).exerciseAction(_current, 'start');
         _refreshData();
-        await _reload();
+        try {
+          await _reload();
+        } on Object {
+          // Starting succeeded. Completion reloads server truth again, so a
+          // transient refresh failure must not make the patient tap Start twice.
+        }
       } on Object catch (error) {
         if (mounted) {
           setState(() => _busy = false);
+          widget.onRunning(false);
           showFailure(context, error);
         }
         return;
@@ -304,7 +330,6 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
       _startedAt = now;
       _run.begin(now);
     });
-    widget.onRunning(true);
     _ticker = Timer.periodic(
       const Duration(milliseconds: 250),
       (_) => _onTick(),
@@ -439,7 +464,7 @@ class _ExerciseRunViewState extends ConsumerState<_ExerciseRunView> {
             exercise.inProgress ? 'continueExercise' : 'startThisExercise',
           ),
           icon: Icons.play_arrow_rounded,
-          color: AppColors.accent,
+          color: AppColors.success,
           busy: _busy,
           onPressed: _start,
         ),

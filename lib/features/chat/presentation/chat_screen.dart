@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../app/localization/app_strings.dart';
@@ -24,6 +25,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   Object? _pollError;
   bool _visible = true, _resumed = true, _sending = false;
   int _generation = 0;
+
+  /// Messages shown immediately while the server confirms them.
+  final List<_Pending> _pending = [];
   @override
   void initState() {
     super.initState();
@@ -77,6 +81,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
         _pollError = null;
       });
       await ref.read(repositoryProvider).readChat();
+      if (conversation.unreadCount > 0) ref.invalidate(conversationProvider);
       if (mounted && generation == _generation) _loop.start();
     } on Object catch (error, stack) {
       if (mounted && generation == _generation) {
@@ -115,10 +120,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
           message.id: message,
       }.values.toList()..sort((a, b) => a.at.compareTo(b.at));
       setState(() {
-        _conversation = AsyncData(Conversation(active.id, merged));
+        _conversation = AsyncData(Conversation(active.id, merged, 0));
         _pollError = null;
       });
       await ref.read(repositoryProvider).readChat();
+      if (active.unreadCount > 0) ref.invalidate(conversationProvider);
     } on Object catch (error) {
       if (mounted && generation == _generation) {
         setState(() => _pollError = error);
@@ -128,15 +134,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
 
   Future<void> _send() async {
     if (_sending || _text.text.trim().isEmpty || !_visible || !_resumed) return;
-    setState(() => _sending = true);
-    final submitted = _text.text;
+    HapticFeedback.lightImpact();
+    final pending = _Pending(_text.text, DateTime.now());
+    _text.clear();
+    setState(() => _pending.add(pending));
+    await _deliver(pending);
+  }
+
+  Future<void> _deliver(_Pending pending) async {
+    setState(() {
+      _sending = true;
+      pending.failed = false;
+    });
     try {
-      await ref.read(repositoryProvider).sendMessage(submitted);
+      await ref.read(repositoryProvider).sendMessage(pending.text);
       if (!mounted) return;
-      if (_text.text == submitted) _text.clear();
       await _load();
+      if (mounted) setState(() => _pending.remove(pending));
     } on Object catch (error) {
-      if (mounted) showFailure(context, error);
+      if (!mounted) return;
+      setState(() => pending.failed = true);
+      showFailure(context, error);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -222,13 +240,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
               error: (e, _) => Center(
                 child: AppErrorState(error: e, retry: _load),
               ),
-              data: (conversation) => conversation.messages.isEmpty
+              data: (conversation) =>
+                  conversation.messages.isEmpty && _pending.isEmpty
                   ? AppEmptyState(
                       title: context.t('emptyChat'),
                       hint: context.t('chatPrivacy'),
                       icon: Icons.forum_outlined,
                     )
-                  : _MessageList(messages: conversation.messages),
+                  : _MessageList(
+                      messages: conversation.messages,
+                      pending: _pending,
+                      onRetry: (pending) {
+                        if (!_sending) _deliver(pending);
+                      },
+                    ),
             ),
           ),
           if (_conversation.hasValue)
@@ -239,9 +264,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen>
   );
 }
 
+class _Pending {
+  _Pending(this.text, this.at);
+  final String text;
+  final DateTime at;
+  bool failed = false;
+}
+
 class _MessageList extends StatelessWidget {
-  const _MessageList({required this.messages});
+  const _MessageList({
+    required this.messages,
+    required this.pending,
+    required this.onRetry,
+  });
   final List<ChatMessage> messages;
+  final List<_Pending> pending;
+  final ValueChanged<_Pending> onRetry;
   @override
   Widget build(BuildContext context) {
     final language = Localizations.localeOf(context).languageCode;
@@ -256,6 +294,16 @@ class _MessageList extends StatelessWidget {
         rows.add(_DayChip(DateFormat.MMMMEEEEd(language).format(current)));
       }
       rows.add(_Bubble(message: message));
+    }
+    for (final item in pending) {
+      rows.add(
+        _Bubble(
+          message: ChatMessage('', item.text, item.at, true),
+          pending: !item.failed,
+          failed: item.failed,
+          onRetry: () => onRetry(item),
+        ),
+      );
     }
     return ListView.builder(
       reverse: true,
@@ -287,12 +335,19 @@ class _DayChip extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message});
+  const _Bubble({
+    required this.message,
+    this.pending = false,
+    this.failed = false,
+    this.onRetry,
+  });
   final ChatMessage message;
+  final bool pending, failed;
+  final VoidCallback? onRetry;
   @override
   Widget build(BuildContext context) {
     final mine = message.mine;
-    return Align(
+    final bubble = Align(
       alignment: mine
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
@@ -303,7 +358,11 @@ class _Bubble extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         decoration: BoxDecoration(
-          color: mine ? AppColors.primary : Colors.white,
+          color: failed
+              ? AppColors.danger
+              : mine
+              ? AppColors.primary
+              : Colors.white,
           boxShadow: mine ? null : AppShadows.soft,
           borderRadius: BorderRadiusDirectional.only(
             topStart: const Radius.circular(18),
@@ -324,19 +383,48 @@ class _Bubble extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              AppDates.time(
-                message.at,
-                Localizations.localeOf(context).languageCode,
+            if (pending || failed)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    failed
+                        ? Icons.error_outline_rounded
+                        : Icons.schedule_rounded,
+                    size: 14,
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      context.t(failed ? 'messageFailed' : 'messageSending'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Text(
+                AppDates.time(
+                  message.at,
+                  Localizations.localeOf(context).languageCode,
+                ),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: mine ? Colors.white70 : AppColors.muted,
+                ),
               ),
-              style: TextStyle(
-                fontSize: 11,
-                color: mine ? Colors.white70 : AppColors.muted,
-              ),
-            ),
           ],
         ),
       ),
+    );
+    if (!failed) return pending ? Opacity(opacity: .7, child: bubble) : bubble;
+    return Semantics(
+      button: true,
+      child: GestureDetector(onTap: onRetry, child: bubble),
     );
   }
 }

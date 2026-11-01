@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/localization/app_strings.dart';
 import '../../../app/providers.dart';
@@ -28,13 +29,12 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
     if (_busy || !Validation.rating(_score, session.attendanceConfirmed)) {
       return;
     }
-    if (!await confirmAction(context, context.t('submitRating')) || !mounted) {
-      return;
-    }
     setState(() => _busy = true);
     try {
       await ref.read(repositoryProvider).rate(session, _score, _note.text);
       _note.clear();
+      ref.invalidate(sessionsProvider);
+      HapticFeedback.mediumImpact();
       if (mounted) setState(() => _done = true);
     } on Object catch (error) {
       if (error is ApiFailure &&

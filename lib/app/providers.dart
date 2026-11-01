@@ -112,11 +112,19 @@ final dailyProvider = FutureProvider.autoDispose<List<DailyCompletion>>(
   (ref) => ref.watch(repositoryProvider).daily(),
 );
 
+final conversationProvider = FutureProvider.autoDispose<Conversation>(
+  (ref) => ref.watch(repositoryProvider).conversation(),
+);
+
+final chatUnreadCountProvider = Provider<int>(
+  (ref) => ref.watch(conversationProvider).valueOrNull?.unreadCount ?? 0,
+);
+
 /// Latest therapist-authored message for the Today preview; null when none.
 final therapistMessageProvider = FutureProvider.autoDispose<ChatMessage?>((
   ref,
 ) async {
-  final conversation = await ref.watch(repositoryProvider).conversation();
+  final conversation = await ref.watch(conversationProvider.future);
   final received = conversation.messages.where((message) => !message.mine);
   if (received.isEmpty) return null;
   return received.reduce((a, b) => a.at.isAfter(b.at) ? a : b);
@@ -128,3 +136,14 @@ final notificationsProvider =
     FutureProvider.autoDispose<List<PatientNotification>>(
       (ref) => ref.watch(repositoryProvider).notifications(),
     );
+
+/// Unread notifications for the bell on Today; zero until loaded.
+final notificationsUnreadProvider = Provider.autoDispose<int>(
+  (ref) =>
+      ref
+          .watch(notificationsProvider)
+          .valueOrNull
+          ?.where((notification) => !notification.read)
+          .length ??
+      0,
+);

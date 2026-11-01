@@ -315,6 +315,7 @@ class _VideoSurfaceState extends State<VideoSurface> {
                                     const Spacer(),
                                     if (widget.onFullscreen != null)
                                       IconButton(
+                                        tooltip: context.t('fullscreen'),
                                         onPressed: widget.onFullscreen,
                                         visualDensity: VisualDensity.compact,
                                         icon: const Icon(
@@ -374,6 +375,7 @@ class _FullscreenVideo extends StatelessWidget {
             top: 4,
             start: 4,
             child: IconButton(
+              tooltip: context.t('close'),
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.close_rounded, color: Colors.white),
             ),

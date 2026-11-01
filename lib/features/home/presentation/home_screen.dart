@@ -21,7 +21,8 @@ class HomeScreen extends ConsumerWidget {
       ..invalidate(dailyProvider)
       ..invalidate(appointmentsProvider)
       ..invalidate(profileProvider)
-      ..invalidate(therapistMessageProvider);
+      ..invalidate(therapistMessageProvider)
+      ..invalidate(notificationsProvider);
     await ref.read(programProvider.future);
   }
 
@@ -67,6 +68,7 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(profileProvider).valueOrNull?.name;
     final first = name?.split(' ').first;
+    final unread = ref.watch(notificationsUnreadProvider);
     final greeting = context.t(
       DateTime.now().hour < 12 ? 'goodMorning' : 'goodEvening',
     );
@@ -117,7 +119,11 @@ class _Header extends ConsumerWidget {
         IconButton(
           tooltip: context.t('notifications'),
           onPressed: () => context.push('/notifications'),
-          icon: const Icon(Icons.notifications_none_rounded),
+          icon: Badge.count(
+            count: unread,
+            isLabelVisible: unread > 0,
+            child: const Icon(Icons.notifications_none_rounded),
+          ),
         ),
       ],
     );
@@ -144,8 +150,12 @@ class _ProgramCard extends ConsumerWidget {
       }
       final next = summary.next;
       final minutes = summary.displayMinutes;
-      final subtitle = summary.complete
+      // Skips close the day but are not achievements; only completions count.
+      final allDone = summary.complete && summary.doneToday == summary.total;
+      final subtitle = allDone
           ? context.t('programDoneHint')
+          : summary.complete
+          ? context.t('nothingLeftToday')
           : [
               exerciseCount(context, summary.total - summary.finished),
               if (minutes != null)
@@ -164,9 +174,7 @@ class _ProgramCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        context.t(
-                          summary.complete ? 'programDone' : 'todayProgram',
-                        ),
+                        context.t(allDone ? 'programDone' : 'todayProgram'),
                         style: AppTypography.section.copyWith(
                           color: Colors.white,
                         ),
@@ -185,8 +193,8 @@ class _ProgramCard extends ConsumerWidget {
                 const SizedBox(width: 16),
                 AppProgressRing(
                   size: 76,
-                  progress: summary.finished / summary.total,
-                  value: ltr('${summary.finished}/${summary.total}'),
+                  progress: summary.doneToday / summary.total,
+                  value: ltr('${summary.doneToday}/${summary.total}'),
                   label: '',
                 ),
               ],
@@ -205,8 +213,8 @@ class _ProgramCard extends ConsumerWidget {
             else
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.primary,
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size(48, 56),
                 ),
                 onPressed: () => startPlayer(context, startId: next.id),
@@ -347,7 +355,7 @@ class _Day extends StatelessWidget {
             label,
             maxLines: 1,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: today ? AppColors.primary : AppColors.muted,
               fontWeight: today ? FontWeight.w800 : FontWeight.w500,
             ),

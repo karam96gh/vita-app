@@ -54,9 +54,32 @@ class ProgramScreen extends ConsumerWidget {
   );
 }
 
-void startPlayer(BuildContext context, {String? startId, String? sessionId}) {
-  final query = {'start': ?startId, 'session': ?sessionId};
-  context.push(Uri(path: '/play', queryParameters: query).toString());
+void startPlayer(
+  BuildContext context, {
+  String? startId,
+  String? sessionId,
+  bool autoStart = false,
+}) {
+  context.push(
+    playerLocation(
+      startId: startId,
+      sessionId: sessionId,
+      autoStart: autoStart,
+    ),
+  );
+}
+
+String playerLocation({
+  String? startId,
+  String? sessionId,
+  bool autoStart = false,
+}) {
+  final query = {
+    'start': ?startId,
+    'session': ?sessionId,
+    if (autoStart) 'auto': '1',
+  };
+  return Uri(path: '/play', queryParameters: query).toString();
 }
 
 class StartProgramButton extends StatelessWidget {
@@ -71,6 +94,7 @@ class StartProgramButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton.icon(
     style: FilledButton.styleFrom(
       backgroundColor: AppColors.success,
+      foregroundColor: Colors.white,
       minimumSize: const Size(48, 56),
     ),
     onPressed: onPressed,

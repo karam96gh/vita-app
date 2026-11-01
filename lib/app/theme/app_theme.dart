@@ -7,8 +7,9 @@ abstract final class AppColors {
   static const muted = Color(0xFF69718A);
   static const success = Color(0xFF237768);
   static const info = Color(0xFF3B6FD6);
-  static const warning = Color(0xFFB3690A);
+  static const warning = Color(0xFF9A5A08);
   static const warningTint = Color(0xFFFFF3E0);
+  static const danger = Color(0xFFB3261E);
 
   /// Brand teal re-stepped to pass the chart chroma floor on light surfaces.
   static const chart = Color(0xFF1F8A6E);
@@ -60,6 +61,15 @@ abstract final class AppTheme {
       textTheme: const TextTheme(
         headlineMedium: AppTypography.title,
         titleLarge: AppTypography.section,
+        titleMedium: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          height: 1.5,
+        ),
+        bodyLarge: TextStyle(fontSize: 16, height: 1.6),
+        bodyMedium: TextStyle(fontSize: 14, height: 1.6),
+        bodySmall: TextStyle(fontSize: 13, height: 1.5),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -98,6 +108,17 @@ abstract final class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         indicatorColor: AppColors.accent.withValues(alpha: .17),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 13,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w500,
+            color: states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.muted,
+          ),
+        ),
       ),
     );
   }

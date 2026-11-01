@@ -91,93 +91,139 @@ class ExerciseDetailScreen extends ConsumerWidget {
                       : 'startThisExercise',
                 ),
                 // The whole-program feed carries today's counts.
-                onPressed: () => startPlayer(context, startId: exercise.id),
+                onPressed: () =>
+                    startPlayer(context, startId: exercise.id, autoStart: true),
               ),
             ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  exerciseName(context, exercise),
+                  style: AppTypography.section.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    final info = sessionOf(
+                      exercise,
+                      ref.watch(sessionsProvider).valueOrNull,
+                    );
+                    if (info.number == null) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        [
+                          '${context.t('fromSession')} ${ltr('${info.number}')}',
+                          if (info.date != null)
+                            AppDates.day(
+                              info.date!,
+                              Localizations.localeOf(context).languageCode,
+                            ),
+                        ].join(' · '),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (ExerciseStateBadge.shows(exercise)) ...[
+                  const SizedBox(height: 12),
+                  ExerciseStateBadge(exercise: exercise),
+                ],
+                if (exercise.cancelled) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    context.t('cancelledHint'),
+                    style: const TextStyle(color: AppColors.muted, height: 1.6),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (stats.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final textScale =
+                    MediaQuery.textScalerOf(context).scale(14) / 14;
+                final columns = constraints.maxWidth >= 330 * textScale
+                    ? 3
+                    : constraints.maxWidth >= 220 * textScale
+                    ? 2
+                    : 1;
+                final visibleColumns = columns > stats.length
+                    ? stats.length
+                    : columns;
+                final width =
+                    (constraints.maxWidth - 10 * (visibleColumns - 1)) /
+                    visibleColumns;
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final stat in stats)
+                      StatChip(
+                        width: width,
+                        icon: stat.$1,
+                        value: stat.$2,
+                        label: context.t(stat.$3),
+                        color: AppColors.primary,
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+          const SizedBox(height: 20),
           if (exercise.mediaUrl != null)
             MediaView(url: exercise.mediaUrl!, type: exercise.mediaType ?? '')
           else
             Container(
               height: 180,
               decoration: BoxDecoration(
-                color: AppColors.canvas,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.self_improvement_rounded,
-                size: 48,
-                color: AppColors.muted,
-              ),
-            ),
-          const SizedBox(height: 20),
-          Text(exerciseName(context, exercise), style: AppTypography.section),
-          Builder(
-            builder: (context) {
-              final info = sessionOf(
-                exercise,
-                ref.watch(sessionsProvider).valueOrNull,
-              );
-              if (info.number == null) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  [
-                    '${context.t('fromSession')} ${ltr('${info.number}')}',
-                    if (info.date != null)
-                      AppDates.day(
-                        info.date!,
-                        Localizations.localeOf(context).languageCode,
-                      ),
-                  ].join(' · '),
-                  style: const TextStyle(color: AppColors.muted),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: .08),
                 ),
-              );
-            },
-          ),
-          if (ExerciseStateBadge.shows(exercise)) ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ExerciseStateBadge(exercise: exercise),
+              ),
+              child: Center(child: ExerciseThumb(exercise: exercise, size: 80)),
             ),
-          ],
-          if (exercise.cancelled) ...[
-            const SizedBox(height: 8),
-            Text(
-              context.t('cancelledHint'),
-              style: const TextStyle(color: AppColors.muted),
-            ),
-          ],
-          if (stats.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final stat in stats)
-                  StatChip(
-                    icon: stat.$1,
-                    value: stat.$2,
-                    label: context.t(stat.$3),
-                  ),
-              ],
-            ),
-          ],
           if (warnings != null) ...[
             const SizedBox(height: 20),
             WarningNote(text: warnings),
           ],
           for (final section in sections.entries) ...[
-            const SizedBox(height: 24),
-            Text(
-              context.t(section.key),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            const SizedBox(height: 16),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.t(section.key),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    section.value!,
+                    style: const TextStyle(fontSize: 15, height: 1.8),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Text(section.value!, style: const TextStyle(height: 1.7)),
           ],
         ],
       ),

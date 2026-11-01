@@ -103,13 +103,13 @@ class ProgramSummary {
     return minutes > 0 && minutes <= 120 ? minutes : null;
   }
 
-  /// Rep-based when reps are prescribed, otherwise timed by duration per set.
+  /// Matches EXERCISE_DURATION_NOT_ELAPSED on the server. Rest is excluded.
   static int estimateSeconds(AssignedExercise item) {
     final sets = max<int>(item.sets ?? 1, 1);
     final int work = item.reps != null
-        ? item.reps! * max<int>(item.holdSeconds ?? 0, 3)
-        : item.durationSeconds ?? 30;
-    return sets * work + (sets - 1) * (item.restSeconds ?? 0);
+        ? item.reps! * ((item.holdSeconds ?? 0) > 0 ? item.holdSeconds! : 2)
+        : item.durationSeconds ?? 0;
+    return sets * work;
   }
 
   static DateTime _day(DateTime value) =>

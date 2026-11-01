@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../app/config/app_config.dart';
 import '../../app/config/firebase_config.dart';
 import '../../features/patient/data/patient_repository.dart';
+import '../../features/patient/domain/models.dart';
 import '../errors/api_failure.dart';
 
 @pragma('vm:entry-point')
@@ -20,7 +21,8 @@ class NotificationService {
     required this.onForeground,
   });
   final PatientRepository Function() repository;
-  final void Function() onOpen, onForeground;
+  final void Function(NotificationLink? link) onOpen;
+  final void Function() onForeground;
   final List<StreamSubscription<Object?>> _subscriptions = [];
   bool _ready = false, _authenticated = false;
   int _generation = 0;
@@ -43,7 +45,9 @@ class NotificationService {
         }),
       );
       _subscriptions.add(
-        FirebaseMessaging.onMessageOpenedApp.listen((_) => onOpen()),
+        FirebaseMessaging.onMessageOpenedApp.listen(
+          (message) => onOpen(_link(message)),
+        ),
       );
       _subscriptions.add(
         FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
@@ -56,9 +60,8 @@ class NotificationService {
           }
         }),
       );
-      if (await FirebaseMessaging.instance.getInitialMessage() != null) {
-        onOpen();
-      }
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) onOpen(_link(initial));
     } on Object {
       _ready = false;
     }
@@ -95,6 +98,14 @@ class NotificationService {
     token,
     defaultTargetPlatform == TargetPlatform.iOS ? 'IOS' : 'ANDROID',
   );
+
+  NotificationLink? _link(RemoteMessage message) {
+    try {
+      return NotificationLink.from(message.data);
+    } on Object {
+      return null;
+    }
+  }
 
   Future<void> dispose() async {
     _authenticated = false;

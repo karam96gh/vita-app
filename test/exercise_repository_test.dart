@@ -35,6 +35,7 @@ Map<String, dynamic> fixture(String id, int order) => {
     'commonMistakesEn': 'Mistakes EN',
     'mediaType': 'VIDEO',
     'mediaUrl': '/media/example.mp4',
+    'thumbnailUrl': '/media/example.jpg',
   },
 };
 
@@ -46,7 +47,10 @@ void main() {
       dio.httpClientAdapter = TestAdapter((request) async {
         expect(request.path, '/me/sessions/session/exercises');
         expect(request.headers['Authorization'], 'Bearer old-access');
-        return success([fixture('second', 2), fixture('first', 1)]);
+        return success([
+          {...fixture('second', 2), 'todayCompletedCount': 1},
+          {...fixture('first', 1), 'todayCompletedCount': 2},
+        ]);
       });
       final api = ApiClient(baseUrl: '', store: MemoryTokens(), transport: dio)
         ..tokens = pair();
@@ -78,6 +82,8 @@ void main() {
       );
       expect(item.mediaType, 'VIDEO');
       expect(item.mediaUrl, '/media/example.mp4');
+      expect(item.thumbnailUrl, '/media/example.jpg');
+      expect(item.todayCompletedCount, 2);
       // A not-yet-executed assignment can be started or skipped, not completed.
       expect(item.allows('start'), isTrue);
       expect(item.allows('skip'), isTrue);
