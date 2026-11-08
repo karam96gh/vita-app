@@ -10,9 +10,14 @@ class AppConfig {
   static const firebaseEnabled = bool.fromEnvironment('FIREBASE_ENABLED');
 
   factory AppConfig.fromEnvironment() => AppConfig(
-    gateway: const String.fromEnvironment('GATEWAY_BASE_URL'),
+    // Defaults are the production values, so a plain build needs no defines.
+    // Local runs can still override them with --dart-define-from-file.
+    gateway: const String.fromEnvironment(
+      'GATEWAY_BASE_URL',
+      defaultValue: 'https://system.vitaxirpro.com',
+    ),
     environment: Environment.values.byName(
-      const String.fromEnvironment('ENVIRONMENT', defaultValue: 'development'),
+      const String.fromEnvironment('ENVIRONMENT', defaultValue: 'production'),
     ),
   );
 
