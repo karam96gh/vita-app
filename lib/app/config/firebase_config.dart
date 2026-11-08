@@ -12,7 +12,7 @@ abstract final class FirebaseConfig {
       apiKey: apiKey,
       appId: appId,
       messagingSenderId: sender,
-      projectId: 'vita-xir',
+      projectId: 'vita-app-f54b5',
       iosBundleId: String.fromEnvironment('IOS_BUNDLE_ID'),
     );
   }
