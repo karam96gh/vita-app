@@ -8,7 +8,7 @@ Status: not release-ready. This is a planning checklist, not a certification of 
 - [ ] Resolve patient API gaps and verify every feature against authorized backend fixtures.
 - [ ] Confirm no runtime mock data, credential logging or unintended patient-data persistence.
 - [ ] Test secure token rotation, account switching, session expiry and logout.
-- [ ] Configure `vita-xir` Firebase clients, Android notification icon and iOS push/APNs capabilities.
+- [ ] Configure `vita-app-f54b5` Firebase clients, Android notification icon and iOS push/APNs capabilities.
 - [ ] Verify notification behavior including logged-out devices and account changes.
 - [ ] Supply final adaptive/app icons, launch screens, screenshots and store copy.
 - [ ] Configure Android signing outside source control; set version name/code.

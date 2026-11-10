@@ -47,7 +47,7 @@ Exercise action permissions, Other identification and message ownership require 
 1. HTTPS gateway and sanitized response schemas for the items in `api-contract-gaps.md`.
 2. Rating eligibility, plus execution-state/timer semantics.
 3. Authorized nonproduction account and test fixtures for real integration QA.
-4. Firebase `vita-xir` client options for the final Android/iOS IDs; APNs setup and physical-device push verification.
+4. Firebase `vita-app-f54b5` client options for the final Android/iOS IDs; APNs setup and physical-device push verification.
 5. Device deregistration/account-switch policy from the backend, and account deletion workflow.
 6. Final signing credentials, iOS/macOS build environment, final iOS icon assets and store/legal content.
 

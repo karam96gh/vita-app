@@ -4,7 +4,7 @@
 
 ## Firebase والإشعارات
 
-1. في مشروع Firebase `vita-xir` سجّل ثلاثة تطبيقات Android بمعرّفات `com.vita.vita_patient.dev` و`com.vita.vita_patient.staging` و`com.vita.vita_patient`، وسجّل تطبيق iOS بالـ Bundle ID النهائي.
+1. في مشروع Firebase `vita-app-f54b5` سجّل ثلاثة تطبيقات Android بمعرّفات `com.vita.vita_patient.dev` و`com.vita.vita_patient.staging` و`com.vita.vita_patient`، وسجّل تطبيق iOS بالـ Bundle ID النهائي.
 2. فعّل Cloud Messaging، وارفع APNs Authentication Key أو شهادة APNs في Firebase.
 3. أنشئ ملف إعداد محلي لكل بيئة من `config/*.example.json`، واضبط `FIREBASE_ENABLED=true` والقيم `FIREBASE_APP_ID`, `FIREBASE_API_KEY`, `FIREBASE_MESSAGING_SENDER_ID` و`IOS_BUNDLE_ID`.
 4. ابنِ التطبيق على جهاز فعلي واختبر foreground/background/terminated، ثم اختبار تسجيل الخروج وتبديل الحساب. لا تعتبر وصول التوكن وحده دليلاً على وصول الإشعار.

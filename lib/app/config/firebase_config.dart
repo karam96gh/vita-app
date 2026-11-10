@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 /// FlutterFire client configuration (not a service-account credential).
 /// Supply the options for the native app's exact flavor/bundle ID at build time.
 abstract final class FirebaseConfig {
+  static const projectId = 'vita-app-f54b5';
+
   static FirebaseOptions? get options {
     const appId = String.fromEnvironment('FIREBASE_APP_ID');
     const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
@@ -12,7 +14,7 @@ abstract final class FirebaseConfig {
       apiKey: apiKey,
       appId: appId,
       messagingSenderId: sender,
-      projectId: 'vita-app-f54b5',
+      projectId: projectId,
       iosBundleId: String.fromEnvironment('IOS_BUNDLE_ID'),
     );
   }

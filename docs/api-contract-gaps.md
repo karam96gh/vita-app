@@ -19,7 +19,7 @@ rows below should be read with this update.
 | Push verification | Notification item and FCM data payload schemas | Read-state rendering and resource navigation |
 | Push privacy | Device unregister or reassignment semantics on logout/account switching | Registration-only contract does not establish how to stop old-account push delivery |
 | Environment | HTTPS gateway for production; development/staging endpoints | Provided IP example uses HTTP; production must use HTTPS |
-| Firebase | Android/iOS client configs for `vita-xir`, final IDs, APNs setup | Required for real device push delivery |
+| Firebase | Android/iOS client configs for `vita-app-f54b5`, final IDs, APNs setup | Required for real device push delivery |
 | Integration | Authorized test account and nonproduction fixture workflow | Needed to verify behavior without manipulating production patient data |
 | Validation | Server username/password/phone rules and message/note limits | Avoid inventing client restrictions inconsistent with the server |
 | Release | Account deletion capability or documented supported workflow | Backend support required: no deletion endpoint in the contract |

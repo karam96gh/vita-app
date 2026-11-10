@@ -195,7 +195,7 @@ Resolve relative `mediaUrl` against the gateway origin, leaving permitted absolu
 
 ## 10. Firebase and environments
 
-Use the supplied Firebase project `vita-xir`. Obtain registered Android/iOS client configuration for the final application/bundle IDs. Configure native Firebase files or generated FlutterFire options per flavor; verify the selected project during setup. Do not fabricate Firebase keys or app identifiers.
+Use the supplied Firebase project `vita-app-f54b5`. Obtain registered Android/iOS client configuration for the final application/bundle IDs. Configure native Firebase files or generated FlutterFire options per flavor; verify the selected project during setup. Do not fabricate Firebase keys or app identifiers.
 
 Initialize Firebase during bootstrap, register a top-level background handler, request notification permission contextually after login, fetch/register the device token, and subscribe to token rotation. Re-register after authenticated session restoration when permission is already granted. Track registration failure and retry on safe lifecycle events. Foreground delivery shows an in-app notification and refreshes the inbox. Background handlers must not access widget context or log payloads.
 

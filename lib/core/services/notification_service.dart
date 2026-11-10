@@ -36,7 +36,7 @@ class NotificationService {
     }
     try {
       final app = await Firebase.initializeApp(options: FirebaseConfig.options);
-      if (app.options.projectId != 'vita-xir') return;
+      if (app.options.projectId != FirebaseConfig.projectId) return;
       _ready = true;
       FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
       _subscriptions.add(
